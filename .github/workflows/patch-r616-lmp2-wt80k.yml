@@ -93,3 +93,4 @@ jobs:
           git add index.html
           git commit -m "Add R616 rooms and LMP2/WT80K techniek dossiers"
           git push
+# retry-after-removing-broken-workflow: 1
