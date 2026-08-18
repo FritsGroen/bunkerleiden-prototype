@@ -1,0 +1,119 @@
+name: Patch 3D terrain
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event.issue.title == 'trigger-3d-terrain-patch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch viewer
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+
+          duplicate='''<div class="rpanel"><h3>NOODUITGANG</h3><div class="rthumb"><img src="zicht%20op%20de%20nooduitgang%20vanuit%20de%20gang.jpeg"><p class="copy">Huidige blik vanuit de gang richting de nooduitgang.</p></div></div>'''
+          s=s.replace(duplicate,'')
+
+          marker='/* 2026-08-18b: terrein + verweerd beton */'
+          if marker not in s:
+            patch=r'''
+<script>
+/* 2026-08-18b: terrein + verweerd beton */
+(function(){
+  function grassTexture(){
+    const c=document.createElement('canvas'); c.width=c.height=1024;
+    const x=c.getContext('2d'), im=x.createImageData(c.width,c.height), d=im.data;
+    for(let i=0;i<d.length;i+=4){
+      const r=Math.random(), v=34+r*38;
+      d[i]=v*.68; d[i+1]=v*1.02; d[i+2]=v*.42; d[i+3]=255;
+    }
+    x.putImageData(im,0,0);
+    for(let i=0;i<4200;i++){
+      const px=Math.random()*1024,py=Math.random()*1024;
+      const green=Math.random()>.32;
+      x.fillStyle=green?'rgba(62,82,35,'+(0.10+Math.random()*.22)+')':'rgba(74,55,35,'+(0.08+Math.random()*.20)+')';
+      x.fillRect(px,py,1+Math.random()*3,1+Math.random()*5);
+    }
+    const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(5.5,5.5); t.encoding=THREE.sRGBEncoding;
+    if(renderer3)t.anisotropy=Math.min(8,renderer3.capabilities.getMaxAnisotropy());
+    return t;
+  }
+
+  function concreteColors(g,rad){
+    const p=g.getAttribute('position'), colors=new Float32Array(p.count*3);
+    for(let i=0;i<p.count;i++){
+      const nx=p.getX(i)/rad, ny=p.getY(i)/rad, nz=p.getZ(i)/rad;
+      const n=(Math.sin(nx*17+nz*11)+Math.sin(ny*23-nx*7)+Math.sin((nx+nz)*39))*0.333;
+      const speck=Math.sin((nx*113+ny*71+nz*97))*0.5+0.5;
+      let v=.43+n*.055+(speck-.5)*.035;
+      if(ny<-.18)v-=.035;
+      colors[i*3]=v*.98; colors[i*3+1]=v*.97; colors[i*3+2]=v*.91;
+    }
+    g.setAttribute('color',new THREE.BufferAttribute(colors,3));
+  }
+
+  showGeometry=function(g){
+    if(!g.getAttribute('normal'))g.computeVertexNormals(); else g.normalizeNormals();
+    g.computeBoundingBox();
+    const c=new THREE.Vector3(); g.boundingBox.getCenter(c); g.translate(-c.x,-c.y,-c.z);
+    g.computeBoundingBox(); g.computeBoundingSphere();
+    const rad=g.boundingSphere.radius;
+    const height=g.boundingBox.max.y-g.boundingBox.min.y;
+    concreteColors(g,rad);
+
+    const mat=new THREE.MeshStandardMaterial({
+      vertexColors:true,
+      color:0xa9a69b,
+      roughness:.985,
+      metalness:0,
+      side:THREE.DoubleSide,
+      flatShading:false
+    });
+    mesh3=new THREE.Mesh(g,mat); mesh3.castShadow=true; mesh3.receiveShadow=true; scene3.add(mesh3);
+
+    const gt=grassTexture();
+    const gm=new THREE.MeshStandardMaterial({map:gt,roughness:1,metalness:0,color:0x718057});
+    const ground=new THREE.Mesh(new THREE.PlaneGeometry(rad*7.5,rad*7.5,1,1),gm);
+    ground.rotation.x=-Math.PI/2;
+    ground.position.y=g.boundingBox.min.y+height*.045;
+    ground.receiveShadow=true;
+    scene3.add(ground);
+
+    const soilMat=new THREE.MeshStandardMaterial({color:0x433728,roughness:1});
+    const soil=new THREE.Mesh(new THREE.CircleGeometry(rad*1.15,72),soilMat);
+    soil.rotation.x=-Math.PI/2; soil.position.y=ground.position.y+.003*height; soil.receiveShadow=true; scene3.add(soil);
+    ground.renderOrder=0; soil.renderOrder=1; mesh3.renderOrder=2;
+
+    const sun=new THREE.DirectionalLight(0xffe2b6,.82); sun.position.set(rad*2.5,rad*4,rad*1.8); sun.castShadow=true;
+    sun.shadow.mapSize.set(2048,2048); sun.shadow.camera.left=-rad*2.2; sun.shadow.camera.right=rad*2.2; sun.shadow.camera.top=rad*2.2; sun.shadow.camera.bottom=-rad*2.2; sun.shadow.camera.near=rad*.05; sun.shadow.camera.far=rad*9; sun.shadow.bias=-.0001;
+    scene3.add(sun); sun.target=mesh3;
+    scene3.add(new THREE.AmbientLight(0x8f9687,.16));
+
+    camera3.position.set(rad*1.62,rad*.88,rad*1.72);
+    camera3.near=Math.max(rad/1500,.05); camera3.far=rad*20; camera3.updateProjectionMatrix();
+    controls3.target.set(0,height*.02,0); controls3.minDistance=rad*.72; controls3.maxDistance=rad*4.5; controls3.update();
+    modelload.style.display='none';
+  };
+})();
+</script>
+'''
+            s=s.replace('</body>',patch+'\n</body>')
+
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Commit
+        run: |
+          git config user.name "chatgpt-site-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          git commit -m "Improve 3D terrain and concrete rendering" || exit 0
+          git push
