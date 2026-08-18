@@ -123,4 +123,54 @@ function fitPlan(){let st=planstage,c=plancanvas;ps=Math.min(st.clientWidth/c.wi
   animate3D=function(){anim3=requestAnimationFrame(animate3D);if(controls3)controls3.update();if(renderer3)renderer3.render(scene3,camera3)};
 })();
 </script>
+<script>
+/* 2026-08-18b: gras, ingegraven maaiveld en rustiger beton */
+(function(){
+  document.querySelectorAll('#bunker .rpanel').forEach(p=>{const h=p.querySelector('h3');if(h&&h.textContent.trim()==='NOODUITGANG')p.remove()});
+
+  function grassTexture(){
+    const c=document.createElement('canvas');c.width=c.height=1024;
+    const x=c.getContext('2d'),im=x.createImageData(c.width,c.height),d=im.data;
+    for(let i=0;i<d.length;i+=4){const r=Math.random(),v=38+r*34;d[i]=v*.62;d[i+1]=v;d[i+2]=v*.39;d[i+3]=255}
+    x.putImageData(im,0,0);
+    for(let i=0;i<5200;i++){const px=Math.random()*1024,py=Math.random()*1024;const green=Math.random()>.28;x.fillStyle=green?'rgba(70,94,39,'+(0.10+Math.random()*.25)+')':'rgba(82,62,39,'+(0.08+Math.random()*.18)+')';x.fillRect(px,py,1+Math.random()*2.5,1+Math.random()*4.5)}
+    const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(5.3,5.3);t.encoding=THREE.sRGBEncoding;if(renderer3)t.anisotropy=Math.min(8,renderer3.capabilities.getMaxAnisotropy());return t;
+  }
+
+  function concreteColors(g,rad){
+    const p=g.getAttribute('position'),colors=new Float32Array(p.count*3);
+    for(let i=0;i<p.count;i++){
+      const nx=p.getX(i)/rad,ny=p.getY(i)/rad,nz=p.getZ(i)/rad;
+      const broad=(Math.sin(nx*16+nz*9)+Math.sin(ny*21-nx*6)+Math.sin((nx+nz)*33))/3;
+      const fine=Math.sin(nx*97+ny*73+nz*83)*.5+.5;
+      let v=.48+broad*.055+(fine-.5)*.025;
+      if(ny<-.18)v-=.025;
+      colors[i*3]=v*.96;colors[i*3+1]=v*.95;colors[i*3+2]=v*.90;
+    }
+    g.setAttribute('color',new THREE.BufferAttribute(colors,3));
+  }
+
+  showGeometry=function(g){
+    if(!g.getAttribute('normal'))g.computeVertexNormals();else g.normalizeNormals();
+    g.computeBoundingBox();const c=new THREE.Vector3();g.boundingBox.getCenter(c);g.translate(-c.x,-c.y,-c.z);g.computeBoundingBox();g.computeBoundingSphere();
+    const rad=g.boundingSphere.radius,height=g.boundingBox.max.y-g.boundingBox.min.y;
+    concreteColors(g,rad);
+
+    const mat=new THREE.MeshStandardMaterial({vertexColors:true,color:0xffffff,roughness:.985,metalness:0,side:THREE.DoubleSide,flatShading:false});
+    mesh3=new THREE.Mesh(g,mat);mesh3.castShadow=true;mesh3.receiveShadow=true;scene3.add(mesh3);
+
+    const groundMat=new THREE.MeshStandardMaterial({map:grassTexture(),roughness:1,metalness:0,color:0x78835c});
+    const ground=new THREE.Mesh(new THREE.PlaneGeometry(rad*7.5,rad*7.5),groundMat);ground.rotation.x=-Math.PI/2;ground.position.y=g.boundingBox.min.y+height*.045;ground.receiveShadow=true;scene3.add(ground);
+
+    const dirs=[];scene3.traverse(o=>{if(o.isDirectionalLight)dirs.push(o);if(o.isHemisphereLight)o.intensity=.48});
+    if(dirs[0]){const k=dirs[0];k.intensity=1.15;k.position.set(rad*2.2,rad*3.6,rad*1.9);k.target=mesh3;k.castShadow=true;k.shadow.mapSize.set(2048,2048);k.shadow.camera.left=-rad*2.1;k.shadow.camera.right=rad*2.1;k.shadow.camera.top=rad*2.1;k.shadow.camera.bottom=-rad*2.1;k.shadow.camera.near=rad*.05;k.shadow.camera.far=rad*8;k.shadow.bias=-.00012;k.shadow.normalBias=rad*.00012;k.shadow.camera.updateProjectionMatrix()}
+    if(dirs[1])dirs[1].intensity=.22;
+    renderer3.toneMappingExposure=.84;
+
+    camera3.position.set(rad*1.62,rad*.88,rad*1.72);camera3.near=Math.max(rad/1500,.05);camera3.far=rad*20;camera3.updateProjectionMatrix();
+    controls3.target.set(0,height*.035,0);controls3.minDistance=rad*.72;controls3.maxDistance=rad*4.5;controls3.minPolarAngle=.10;controls3.maxPolarAngle=Math.PI/2-.025;controls3.update();
+    modelload.style.display='none';
+  };
+})();
+</script>
 </body></html>
