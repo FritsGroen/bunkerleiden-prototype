@@ -1,15 +1,15 @@
 name: Patch 3D terrain
 
 on:
-  issues:
-    types: [opened]
+  push:
+    paths:
+      - '.github/workflows/patch-3d-terrain.yml'
 
 permissions:
   contents: write
 
 jobs:
   patch:
-    if: github.event.issue.title == 'trigger-3d-terrain-patch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -70,19 +70,12 @@ jobs:
     const height=g.boundingBox.max.y-g.boundingBox.min.y;
     concreteColors(g,rad);
 
-    const mat=new THREE.MeshStandardMaterial({
-      vertexColors:true,
-      color:0xa9a69b,
-      roughness:.985,
-      metalness:0,
-      side:THREE.DoubleSide,
-      flatShading:false
-    });
+    const mat=new THREE.MeshStandardMaterial({vertexColors:true,color:0xa9a69b,roughness:.985,metalness:0,side:THREE.DoubleSide,flatShading:false});
     mesh3=new THREE.Mesh(g,mat); mesh3.castShadow=true; mesh3.receiveShadow=true; scene3.add(mesh3);
 
     const gt=grassTexture();
     const gm=new THREE.MeshStandardMaterial({map:gt,roughness:1,metalness:0,color:0x718057});
-    const ground=new THREE.Mesh(new THREE.PlaneGeometry(rad*7.5,rad*7.5,1,1),gm);
+    const ground=new THREE.Mesh(new THREE.PlaneGeometry(rad*7.5,rad*7.5),gm);
     ground.rotation.x=-Math.PI/2;
     ground.position.y=g.boundingBox.min.y+height*.045;
     ground.receiveShadow=true;
@@ -91,7 +84,6 @@ jobs:
     const soilMat=new THREE.MeshStandardMaterial({color:0x433728,roughness:1});
     const soil=new THREE.Mesh(new THREE.CircleGeometry(rad*1.15,72),soilMat);
     soil.rotation.x=-Math.PI/2; soil.position.y=ground.position.y+.003*height; soil.receiveShadow=true; scene3.add(soil);
-    ground.renderOrder=0; soil.renderOrder=1; mesh3.renderOrder=2;
 
     const sun=new THREE.DirectionalLight(0xffe2b6,.82); sun.position.set(rad*2.5,rad*4,rad*1.8); sun.castShadow=true;
     sun.shadow.mapSize.set(2048,2048); sun.shadow.camera.left=-rad*2.2; sun.shadow.camera.right=rad*2.2; sun.shadow.camera.top=rad*2.2; sun.shadow.camera.bottom=-rad*2.2; sun.shadow.camera.near=rad*.05; sun.shadow.camera.far=rad*9; sun.shadow.bias=-.0001;
