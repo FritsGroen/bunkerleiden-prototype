@@ -1,0 +1,95 @@
+name: Patch R616 rooms and techniek dossiers
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/patch-r616-lmp2-wt80k.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch index.html
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          marker = 'R616-ROOMS-LMP2-WT80K-PATCH-20260818'
+          if marker in s:
+              print('Patch already present')
+              raise SystemExit(0)
+          block = r'''
+<!-- R616-ROOMS-LMP2-WT80K-PATCH-20260818 -->
+<style>
+#extra-tech-modal{position:fixed;inset:0;z-index:9999;background:#000d;display:none;align-items:center;justify-content:center;padding:18px}#extra-tech-modal.open{display:flex}#extra-tech-modal .xbox{width:min(980px,96vw);max-height:90vh;overflow:auto;background:#0d110d;border:1px solid rgba(228,183,25,.45);border-radius:10px;padding:18px}#extra-tech-modal .xclose{float:right;border:1px solid rgba(228,183,25,.45);background:#080b08;color:#ffd84b;border-radius:5px;padding:8px 11px;cursor:pointer}#extra-tech-modal h2{color:#ffd84b}#extra-tech-modal img{width:100%;max-height:52vh;object-fit:contain;background:#070907;border:1px solid rgba(255,255,255,.1);border-radius:8px}#extra-tech-modal .gallery{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}#extra-tech-modal p{color:#b9af99;line-height:1.6}#extra-tech-modal a{color:#ffd84b}.extra-room-card{cursor:default}
+@media(max-width:700px){#extra-tech-modal{padding:8px}#extra-tech-modal .xbox{padding:14px;max-height:94vh}#extra-tech-modal .gallery{grid-template-columns:1fr}}
+</style>
+<div id="extra-tech-modal" aria-hidden="true"><div class="xbox"><button class="xclose" type="button">SLUITEN ×</button><div id="extra-tech-content"></div></div></div>
+<script>
+(function(){
+ const roomItems=[
+  ['05','NAHKAMPFRAUM','Nabijverdediging van de bunker.'],
+  ['06','ONDERHOUDSCORRIDOR','Technische toegang en onderhoudsroute.'],
+  ['07','TOBRUK','Toegang naar de aangebouwde Tobruk-positie.'],
+  ['08','WT80K','Bunkeroven/kachel voor verwarming van het interieur.'],
+  ['09','COMMUNICATIE','FF33, Sprachrohr en interne verbindingen.']
+ ];
+ function addRooms(){
+   const all=[...document.querySelectorAll('h1,h2,h3,b,strong,div')];
+   const sch=all.find(e=>/SCHAKELRUIMTE/i.test(e.textContent||'') && (e.textContent||'').length<100);
+   if(!sch) return;
+   let card=sch.closest('.card,.rpanel,.homebox')||sch.parentElement;
+   let list=card&&card.parentElement;
+   if(!list||list.querySelector('[data-extra-room="NAHKAMPFRAUM"]')) return;
+   const comm=[...list.children].find(e=>/COMMUNICATIE/i.test(e.textContent||''));
+   if(comm) comm.remove();
+   roomItems.forEach(([n,t,d])=>{
+     let c=card.cloneNode(true); c.classList.add('extra-room-card'); c.dataset.extraRoom=t;
+     const heading=c.querySelector('h1,h2,h3,b,strong')||c.firstElementChild;
+     if(heading) heading.textContent=n+' · '+t;
+     const desc=c.querySelector('p')||[...c.querySelectorAll('div')].find(x=>x!==heading);
+     if(desc) desc.textContent=d;
+     list.appendChild(c);
+   });
+ }
+ const modal=document.getElementById('extra-tech-modal'), content=document.getElementById('extra-tech-content');
+ function openExtra(type){
+   if(type==='lmp2') content.innerHTML=`<h2>Leitungsprüfer · Ohmmeter LMP2</h2><div class="gallery"><img src="LMP2 ohmmeter.jpeg" alt="Siemens & Halske LMP2 ohmmeter"><img src="LMP2 ohmmeter2.jpeg" alt="LMP2 ohmmeter tweede opname"></div><p><b>Siemens & Halske / Siemens-Schuckert</b></p><p>De LMP2 is een draagbaar meetinstrument voor het controleren van elektrische leidingen en weerstanden. Binnen de bunkercontext hoort het bij het onderhoud en de controle van telefoon- en verbindingsleidingen.</p><p>Bron en verdere technische documentatie: <a href="https://www.der-fernmelder.de/messgeraete/lmp2-ohmmeter/" target="_blank" rel="noopener">Der Fernmelder — LMP2 Ohmmeter</a>.</p>`;
+   else content.innerHTML=`<h2>WT80K · bunkeroven / kachel</h2><img src="WT80K oven kachel.jpg" alt="WT80K bunkeroven en kachel"><p>De WT80K is opgenomen als onderdeel van de technische inrichting en verwarming van de bunker. Dit dossier wordt uitgebreid zodra aanvullende primaire of technische documentatie beschikbaar is.</p>`;
+   modal.classList.add('open'); modal.setAttribute('aria-hidden','false');
+ }
+ function addTech(){
+   const grid=document.querySelector('.techgrid'); if(!grid||document.getElementById('tech-lmp2-extra')) return;
+   const make=(id,img,title,text,type)=>{const d=document.createElement('div');d.className='techpanel';d.id=id;d.innerHTML=`<img src="${img}" alt="${title}"><div class="inner"><h3>${title}</h3><p>${text}</p><span class="badge">DOSSIER OPENEN</span></div>`;d.addEventListener('click',()=>openExtra(type));return d};
+   grid.appendChild(make('tech-lmp2-extra','LMP2 ohmmeter.jpeg','Leitungsprüfer · Ohmmeter LMP2','Siemens & Halske / Siemens-Schuckert · leiding- en weerstandsmeting.','lmp2'));
+   grid.appendChild(make('tech-wt80k-extra','WT80K oven kachel.jpg','WT80K · bunkeroven / kachel','Technische inrichting voor verwarming van het bunkerinterieur.','wt80k'));
+ }
+ document.querySelector('#extra-tech-modal .xclose').addEventListener('click',()=>modal.classList.remove('open'));
+ modal.addEventListener('click',e=>{if(e.target===modal)modal.classList.remove('open')});
+ document.addEventListener('keydown',e=>{if(e.key==='Escape')modal.classList.remove('open')});
+ const run=()=>{addRooms();addTech()};
+ if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',run); else run();
+ new MutationObserver(run).observe(document.body,{childList:true,subtree:true});
+})();
+</script>
+'''
+          if '</body>' not in s:
+              raise SystemExit('No </body> found')
+          s=s.replace('</body>',block+'\n</body>',1)
+          p.write_text(s,encoding='utf-8')
+          print('Patched index.html')
+      - name: Commit patch
+        run: |
+          if git diff --quiet; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Add R616 rooms and LMP2/WT80K techniek dossiers"
+          git push
