@@ -1,4 +1,4 @@
-name: Patch interaction audio and plan zoom
+name: Patch interaction audio and mobile zoom
 on:
   push:
     paths:
@@ -10,53 +10,80 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Patch index
+      - name: Patch index safely
         run: |
           python3 - <<'PY'
           from pathlib import Path
           p=Path('index.html')
           s=p.read_text(encoding='utf-8')
+          original=s
 
-          # Make reticle click explicit and audible before navigation/modal action.
-          s=s.replace('onclick="go(\'bunker\');event.stopPropagation()"','onclick="playUiClick(.48);go(\'bunker\');event.stopPropagation()"')
-          s=s.replace('onclick="boommarkt();event.stopPropagation()"','onclick="playUiClick(.48);boommarkt();event.stopPropagation()"')
+          def req(old,new,label,count=1):
+              global s
+              if old not in s:
+                  raise SystemExit(f'MISSING EXPECTED BLOCK: {label}')
+              s=s.replace(old,new,count)
 
-          # Make Gassluis technical card and 3D hotspot open a dossier.
-          s=s.replace('<div class="hotspot"><b>03 · GASSLUIS</b>','<div class="hotspot" onclick="gassluis()"><b>03 · GASSLUIS</b>')
-          s=s.replace('<div class="card"><h3>Gassluis</h3><p>Gasdichte overgang tussen buitenwereld en beschermde binnenruimte.</p></div>','<div class="card" onclick="gassluis()"><h3>Gassluis</h3><p>Gasdichte overgang tussen buitenwereld en beschermde binnenruimte.</p><span class="badge">OPEN DOSSIER</span></div>')
+          # Strong, explicit click on both map reticles.
+          req('onclick="go(\'bunker\');event.stopPropagation()"','onclick="playUiClick(.48);go(\'bunker\');event.stopPropagation()"','R616 reticle')
+          req('onclick="boommarkt();event.stopPropagation()"','onclick="playUiClick(.48);boommarkt();event.stopPropagation()"','Boommarkt reticle')
 
-          # Add sound buttons to emergency exit dossier.
-          old="function nooduitgang(){modal(`<div class='k'>TECHNISCH DOSSIER</div><h2>NOODUITGANG</h2><div class='techdetail'><img src=\"zicht%20op%20de%20nooduitgang%20vanuit%20de%20gang.jpeg\"><div><p class='copy'>De nooduitgang bood een alternatieve route uit de bunker wanneer de hoofdtoegang niet bruikbaar was. De foto toont het huidige zicht vanuit de gang.</p><div class='techfacts'><div>FUNCTIE</div><div>alternatieve uitgang</div><div>LOCATIE</div><div>bereikbaar vanuit de gang</div></div></div></div>`,true)}"
-          new="function nooduitgang(){modal(`<div class='k'>TECHNISCH DOSSIER</div><h2>NOODUITGANG</h2><div class='techdetail'><img src=\"zicht%20op%20de%20nooduitgang%20vanuit%20de%20gang.jpeg\"><div><p class='copy'>De nooduitgang bood een alternatieve route uit de bunker wanneer de hoofdtoegang niet bruikbaar was. De foto toont het huidige zicht vanuit de gang.</p><div class='techfacts'><div>FUNCTIE</div><div>alternatieve uitgang</div><div>LOCATIE</div><div>bereikbaar vanuit de gang</div></div><h3>Luister</h3><div class='soundbar'><button class='soundbtn' onclick=\"playContextSound('nood',0,this)\">▶ NOODUITGANG OPENEN</button></div></div></div>`,true)}"
-          if old in s: s=s.replace(old,new)
+          # Open the Gassluis dossier from the photo, 3D hotspot and Technique card.
+          req("onclick=\"photo('gasssluis.jpg','Gassluis')\"","onclick=\"gassluis()\"",'Gassluis R616 photo')
+          req('<div class="hotspot"><b>03 · GASSLUIS</b>','<div class="hotspot" onclick="gassluis()"><b>03 · GASSLUIS</b>','Gassluis 3D hotspot')
+          req('<div class="card"><h3>Gassluis</h3><p>Gasdichte overgang tussen buitenwereld en beschermde binnenruimte.</p></div>','<div class="card" onclick="gassluis()"><h3>Gassluis</h3><p>Gasdichte overgang tussen buitenwereld en beschermde binnenruimte.</p><span class="badge">OPEN DOSSIER</span></div>','Gassluis Technique card')
 
-          # Add a Gassluis dossier with two contextual sounds.
+          # Gassluis dossier: dedicated opening + closing sounds.
           anchor='function nooduitgang(){'
-          if 'function gassluis(){' not in s and anchor in s:
-              g="""function gassluis(){modal(`<div class='k'>TECHNISCH DOSSIER · BESCHERMDE TOEGANG</div><h2>GASSLUIS</h2><div class='techdetail'><img src=\"gasssluis.jpg\"><div><p class='copy'>De gassluis vormde de beschermde overgang tussen buiten en de gasdichte binnenruimte. De deuren werden na elkaar gebruikt zodat de beschermde toestand van de bunker zo veel mogelijk behouden bleef.</p><div class='techfacts'><div>FUNCTIE</div><div>beschermde overgang</div><div>PRINCIPE</div><div>deuren na elkaar openen en sluiten</div></div><h3>Luister</h3><div class='soundbar'><button class='soundbtn' onclick=\"playContextSound('gas',0,this)\">▶ SLUIS · GELUID 1</button><button class='soundbtn' onclick=\"playContextSound('gas',1,this)\">▶ SLUIS · GELUID 2</button></div></div></div>`,true)}
+          if 'function gassluis(){' not in s:
+              if anchor not in s: raise SystemExit('MISSING EXPECTED BLOCK: nooduitgang anchor')
+              g="""function gassluis(){modal(`<div class='k'>TECHNISCH DOSSIER · BESCHERMDE TOEGANG</div><h2>GASSLUIS</h2><div class='techdetail'><img src=\"gasssluis.jpg\"><div><p class='copy'>De gassluis vormde de beschermde overgang tussen buiten en de gasdichte binnenruimte. De deuren werden na elkaar gebruikt zodat de beschermde toestand van de bunker zo veel mogelijk behouden bleef.</p><div class='techfacts'><div>FUNCTIE</div><div>beschermde overgang</div><div>PRINCIPE</div><div>deuren na elkaar openen en sluiten</div></div><h3>Luister</h3><div class='soundbar'><button class='soundbtn' onclick=\"playSound('opening-metal-door.mp3',this)\">▶ GASSLUIS OPENEN</button><button class='soundbtn' onclick=\"playSound('closing-metal-door.mp3',this)\">▶ GASSLUIS SLUITEN</button></div></div></div>`,true)}
 """
               s=s.replace(anchor,g+anchor,1)
 
-          # Add explicit UI click helper and repository-aware contextual sound discovery.
+          # Nooduitgang dossier: dedicated lock/open sound.
+          old="function nooduitgang(){modal(`<div class='k'>TECHNISCH DOSSIER</div><h2>NOODUITGANG</h2><div class='techdetail'><img src=\"zicht%20op%20de%20nooduitgang%20vanuit%20de%20gang.jpeg\"><div><p class='copy'>De nooduitgang bood een alternatieve route uit de bunker wanneer de hoofdtoegang niet bruikbaar was. De foto toont het huidige zicht vanuit de gang.</p><div class='techfacts'><div>FUNCTIE</div><div>alternatieve uitgang</div><div>LOCATIE</div><div>bereikbaar vanuit de gang</div></div></div></div>`,true)}"
+          new="function nooduitgang(){modal(`<div class='k'>TECHNISCH DOSSIER</div><h2>NOODUITGANG</h2><div class='techdetail'><img src=\"zicht%20op%20de%20nooduitgang%20vanuit%20de%20gang.jpeg\"><div><p class='copy'>De nooduitgang bood een alternatieve route uit de bunker wanneer de hoofdtoegang niet bruikbaar was. De foto toont het huidige zicht vanuit de gang.</p><div class='techfacts'><div>FUNCTIE</div><div>alternatieve uitgang</div><div>LOCATIE</div><div>bereikbaar vanuit de gang</div></div><h3>Luister</h3><div class='soundbar'><button class='soundbtn' onclick=\"playSound('unlocking-metal-door.mp3',this)\">▶ NOODUITGANG ONTGRENDELEN / OPENEN</button></div></div></div>`,true)}"
+          req(old,new,'Nooduitgang dossier')
+
+          # UI click helper. Generic click skips reticles to prevent a double click sound.
           marker="const uiClick=new Audio('mouseclick.mp3');uiClick.volume=.14;"
-          if marker in s and 'function playUiClick(' not in s:
-              repl="""const uiClick=new Audio('mouseclick.mp3');uiClick.volume=.14;
+          repl="""const uiClick=new Audio('mouseclick.mp3');uiClick.volume=.14;
 function playUiClick(volume=.14){try{const a=new Audio('mouseclick.mp3');a.volume=volume;a.play().catch(()=>{})}catch(_){}}
-let contextSoundFiles=null;
-async function getContextSounds(){if(contextSoundFiles)return contextSoundFiles;try{const r=await fetch('https://api.github.com/repos/FritsGroen/bunkerleiden-prototype/contents/');const j=await r.json();contextSoundFiles=(Array.isArray(j)?j:[]).map(x=>x.name).filter(n=>/\\.mp3$/i.test(n));}catch(_){contextSoundFiles=[]}return contextSoundFiles}
-async function playContextSound(kind,index,btn){const files=await getContextSounds();let matches;if(kind==='gas')matches=files.filter(n=>/(gas|gass|sluis)/i.test(n));else matches=files.filter(n=>/(nood|uitgang|exit|emergency)/i.test(n));if(!matches.length){btn.textContent='GELUID NOG NIET GEVONDEN';setTimeout(()=>btn.textContent=kind==='gas'?'▶ SLUIS · GELUID '+(index+1):'▶ NOODUITGANG OPENEN',1800);return}playSound(matches[Math.min(index,matches.length-1)],btn)}
 """
-              s=s.replace(marker,repl,1)
+          req(marker,repl,'UI click marker')
+          req("const el=e.target.closest('button,.techpanel,.card,.hotspot,.locationrow');if(!el||el.classList.contains('soundbtn'))return;","const el=e.target.closest('button,.techpanel,.card,.hotspot,.locationrow');if(!el||el.classList.contains('soundbtn')||el.classList.contains('reticle'))return;",'generic click listener')
 
-          # Avoid double generic UI click when reticles already play the stronger click.
-          s=s.replace("const el=e.target.closest('button,.techpanel,.card,.hotspot,.locationrow');if(!el||el.classList.contains('soundbtn'))return;","const el=e.target.closest('button,.techpanel,.card,.hotspot,.locationrow');if(!el||el.classList.contains('soundbtn')||el.classList.contains('reticle'))return;")
+          # Newspaper: zoom around mouse/touch point + one-finger pan + pinch zoom.
+          req('let nrScale=1,nrX=0,nrY=0,nrDrag=false,nrLX=0,nrLY=0;','let nrScale=1,nrX=0,nrY=0,nrDrag=false,nrLX=0,nrLY=0,nrPointers=new Map(),nrPinchDist=0,nrPinchCenter=null;','newspaper state')
+          old="function newspaperZoom(f){const st=document.getElementById('newsreader'),im=document.getElementById('newsimg');if(!st||!im)return;const cx=st.clientWidth/2,cy=st.clientHeight/2,ns=Math.max(.05,Math.min(6,nrScale*f)),wx=(cx-nrX)/nrScale,wy=(cy-nrY)/nrScale;nrX=cx-wx*ns;nrY=cy-wy*ns;nrScale=ns;newsApply()}\nfunction wireNewspaper(){const st=document.getElementById('newsreader');if(!st||st.dataset.wired)return;st.dataset.wired='1';st.addEventListener('wheel',e=>{e.preventDefault();const r=st.getBoundingClientRect(),cx=e.clientX-r.left,cy=e.clientY-r.top,ns=Math.max(.05,Math.min(6,nrScale*(e.deltaY<0?1.14:.88))),wx=(cx-nrX)/nrScale,wy=(cy-nrY)/nrScale;nrX=cx-wx*ns;nrY=cy-wy*ns;nrScale=ns;newsApply()},{passive:false});st.addEventListener('pointerdown',e=>{nrDrag=true;nrLX=e.clientX;nrLY=e.clientY;st.setPointerCapture(e.pointerId);st.classList.add('dragging')});st.addEventListener('pointermove',e=>{if(!nrDrag)return;nrX+=e.clientX-nrLX;nrY+=e.clientY-nrLY;nrLX=e.clientX;nrLY=e.clientY;newsApply()});['pointerup','pointercancel'].forEach(t=>st.addEventListener(t,()=>{nrDrag=false;st.classList.remove('dragging')}))}"
+          new="""function newspaperZoomAt(f,cx,cy){const st=document.getElementById('newsreader'),im=document.getElementById('newsimg');if(!st||!im)return;const ns=Math.max(.05,Math.min(8,nrScale*f)),wx=(cx-nrX)/nrScale,wy=(cy-nrY)/nrScale;nrX=cx-wx*ns;nrY=cy-wy*ns;nrScale=ns;newsApply()}
+function newspaperZoom(f){const st=document.getElementById('newsreader');if(!st)return;newspaperZoomAt(f,st.clientWidth/2,st.clientHeight/2)}
+function wireNewspaper(){const st=document.getElementById('newsreader');if(!st||st.dataset.wired)return;st.dataset.wired='1';
+ st.addEventListener('wheel',e=>{e.preventDefault();const r=st.getBoundingClientRect();newspaperZoomAt(e.deltaY<0?1.14:.88,e.clientX-r.left,e.clientY-r.top)},{passive:false});
+ st.addEventListener('pointerdown',e=>{const r=st.getBoundingClientRect();nrPointers.set(e.pointerId,{x:e.clientX-r.left,y:e.clientY-r.top});st.setPointerCapture(e.pointerId);st.classList.add('dragging');if(nrPointers.size===1){nrDrag=true;nrLX=e.clientX;nrLY=e.clientY}else if(nrPointers.size===2){const a=[...nrPointers.values()];nrPinchDist=Math.hypot(a[1].x-a[0].x,a[1].y-a[0].y);nrPinchCenter={x:(a[0].x+a[1].x)/2,y:(a[0].y+a[1].y)/2};nrDrag=false}});
+ st.addEventListener('pointermove',e=>{if(!nrPointers.has(e.pointerId))return;const r=st.getBoundingClientRect();nrPointers.set(e.pointerId,{x:e.clientX-r.left,y:e.clientY-r.top});if(nrPointers.size===1&&nrDrag){nrX+=e.clientX-nrLX;nrY+=e.clientY-nrLY;nrLX=e.clientX;nrLY=e.clientY;newsApply()}else if(nrPointers.size>=2){const a=[...nrPointers.values()].slice(0,2),dist=Math.hypot(a[1].x-a[0].x,a[1].y-a[0].y),center={x:(a[0].x+a[1].x)/2,y:(a[0].y+a[1].y)/2};if(nrPinchCenter){nrX+=center.x-nrPinchCenter.x;nrY+=center.y-nrPinchCenter.y}if(nrPinchDist>0)newspaperZoomAt(dist/nrPinchDist,center.x,center.y);nrPinchDist=dist;nrPinchCenter=center}});
+ const end=e=>{nrPointers.delete(e.pointerId);if(nrPointers.size===1){const a=[...nrPointers.values()][0];const r=st.getBoundingClientRect();nrDrag=true;nrLX=r.left+a.x;nrLY=r.top+a.y;nrPinchDist=0;nrPinchCenter=null}else if(nrPointers.size===0){nrDrag=false;nrPinchDist=0;nrPinchCenter=null;st.classList.remove('dragging')}};['pointerup','pointercancel'].forEach(t=>st.addEventListener(t,end))}
+"""
+          req(old,new,'newspaper mobile pinch block')
 
-          # Mouse-centred zoom for plan viewer. Keep toolbar +/- centred.
-          old="function fitPlan(){let st=planstage,c=plancanvas;ps=Math.min(st.clientWidth/c.width,st.clientHeight/c.height);px=(st.clientWidth-c.width*ps)/2;py=(st.clientHeight-c.height*ps)/2;prot=0;planApply()}function planZoom(f){ps=Math.max(.05,Math.min(8,ps*f));planApply()}function planRot(d){prot=(prot+d)%360;planApply()}function wirePlan(){planstage.addEventListener('wheel',e=>{e.preventDefault();planZoom(e.deltaY<0?1.15:.87)},{passive:false});"
-          new="function fitPlan(){let st=planstage,c=plancanvas;ps=Math.min(st.clientWidth/c.width,st.clientHeight/c.height);px=(st.clientWidth-c.width*ps)/2;py=(st.clientHeight-c.height*ps)/2;prot=0;planApply()}function planZoomAt(f,cx,cy){const ns=Math.max(.05,Math.min(8,ps*f)),wx=(cx-px)/ps,wy=(cy-py)/ps;px=cx-wx*ns;py=cy-wy*ns;ps=ns;planApply()}function planZoom(f){let st=planstage;planZoomAt(f,st.clientWidth/2,st.clientHeight/2)}function planRot(d){prot=(prot+d)%360;planApply()}function wirePlan(){planstage.addEventListener('wheel',e=>{e.preventDefault();const r=planstage.getBoundingClientRect();planZoomAt(e.deltaY<0?1.15:.87,e.clientX-r.left,e.clientY-r.top)},{passive:false});"
-          if old in s: s=s.replace(old,new,1)
+          # Plan viewer: zoom around cursor + one-finger pan + pinch zoom.
+          req('let ps=1,px=0,py=0,prot=0,pdrag=false,plx=0,ply=0;','let ps=1,px=0,py=0,prot=0,pdrag=false,plx=0,ply=0,pPointers=new Map(),pPinchDist=0,pPinchCenter=null;','plan state')
+          old="function fitPlan(){let st=planstage,c=plancanvas;ps=Math.min(st.clientWidth/c.width,st.clientHeight/c.height);px=(st.clientWidth-c.width*ps)/2;py=(st.clientHeight-c.height*ps)/2;prot=0;planApply()}function planZoom(f){ps=Math.max(.05,Math.min(8,ps*f));planApply()}function planRot(d){prot=(prot+d)%360;planApply()}function wirePlan(){planstage.addEventListener('wheel',e=>{e.preventDefault();planZoom(e.deltaY<0?1.15:.87)},{passive:false});planstage.addEventListener('pointerdown',e=>{pdrag=true;plx=e.clientX;ply=e.clientY;planstage.setPointerCapture(e.pointerId)});planstage.addEventListener('pointermove',e=>{if(!pdrag)return;px+=e.clientX-plx;py+=e.clientY-ply;plx=e.clientX;ply=e.clientY;planApply()});planstage.addEventListener('pointerup',()=>pdrag=false)}"
+          new="""function fitPlan(){let st=planstage,c=plancanvas;ps=Math.min(st.clientWidth/c.width,st.clientHeight/c.height);px=(st.clientWidth-c.width*ps)/2;py=(st.clientHeight-c.height*ps)/2;prot=0;planApply()}
+function planZoomAt(f,cx,cy){const ns=Math.max(.05,Math.min(8,ps*f)),wx=(cx-px)/ps,wy=(cy-py)/ps;px=cx-wx*ns;py=cy-wy*ns;ps=ns;planApply()}
+function planZoom(f){let st=planstage;planZoomAt(f,st.clientWidth/2,st.clientHeight/2)}function planRot(d){prot=(prot+d)%360;planApply()}
+function wirePlan(){
+ planstage.addEventListener('wheel',e=>{e.preventDefault();const r=planstage.getBoundingClientRect();planZoomAt(e.deltaY<0?1.15:.87,e.clientX-r.left,e.clientY-r.top)},{passive:false});
+ planstage.addEventListener('pointerdown',e=>{const r=planstage.getBoundingClientRect();pPointers.set(e.pointerId,{x:e.clientX-r.left,y:e.clientY-r.top});planstage.setPointerCapture(e.pointerId);if(pPointers.size===1){pdrag=true;plx=e.clientX;ply=e.clientY}else if(pPointers.size===2){const a=[...pPointers.values()];pPinchDist=Math.hypot(a[1].x-a[0].x,a[1].y-a[0].y);pPinchCenter={x:(a[0].x+a[1].x)/2,y:(a[0].y+a[1].y)/2};pdrag=false}});
+ planstage.addEventListener('pointermove',e=>{if(!pPointers.has(e.pointerId))return;const r=planstage.getBoundingClientRect();pPointers.set(e.pointerId,{x:e.clientX-r.left,y:e.clientY-r.top});if(pPointers.size===1&&pdrag){px+=e.clientX-plx;py+=e.clientY-ply;plx=e.clientX;ply=e.clientY;planApply()}else if(pPointers.size>=2){const a=[...pPointers.values()].slice(0,2),dist=Math.hypot(a[1].x-a[0].x,a[1].y-a[0].y),center={x:(a[0].x+a[1].x)/2,y:(a[0].y+a[1].y)/2};if(pPinchCenter){px+=center.x-pPinchCenter.x;py+=center.y-pPinchCenter.y}if(pPinchDist>0)planZoomAt(dist/pPinchDist,center.x,center.y);pPinchDist=dist;pPinchCenter=center}});
+ const pend=e=>{pPointers.delete(e.pointerId);if(pPointers.size===1){const a=[...pPointers.values()][0];const r=planstage.getBoundingClientRect();pdrag=true;plx=r.left+a.x;ply=r.top+a.y;pPinchDist=0;pPinchCenter=null}else if(pPointers.size===0){pdrag=false;pPinchDist=0;pPinchCenter=null}};['pointerup','pointercancel'].forEach(t=>planstage.addEventListener(t,pend))}
+"""
+          req(old,new,'plan cursor and pinch zoom block')
 
+          if s==original: raise SystemExit('NO CHANGES MADE')
           p.write_text(s,encoding='utf-8')
+          print('PATCH_OK')
           PY
       - name: Commit
         run: |
@@ -64,5 +91,5 @@ async function playContextSound(kind,index,btn){const files=await getContextSoun
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add index.html
           git diff --cached --quiet && exit 0
-          git commit -m 'Improve plan zoom and contextual bunker sounds'
+          git commit -m 'Add contextual door audio and mobile-centred viewers'
           git push
