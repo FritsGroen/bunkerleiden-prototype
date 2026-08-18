@@ -1,9 +1,8 @@
 name: Patch map labels and 3D viewer
 
 on:
-  push:
-    paths:
-      - '.github/workflows/patch-maplabels-3d.yml'
+  issues:
+    types: [opened]
   workflow_dispatch:
 
 permissions:
@@ -11,6 +10,7 @@ permissions:
 
 jobs:
   patch-site:
+    if: github.event_name == 'issues' && github.event.issue.title == 'trigger-maplabels-3d-patch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -66,5 +66,3 @@ function animate3D(){anim3=requestAnimationFrame(animate3D);if(controls3)control
           git add index.html
           git commit -m "Improve sharp map labels and 3D concrete viewer"
           git push
-
-# trigger 2026-08-18T17:05
