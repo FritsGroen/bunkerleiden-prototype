@@ -1,0 +1,52 @@
+name: Patch Haarlemmerweg location
+
+on:
+  push:
+    paths:
+      - '.github/workflows/patch-haarlemmerweg.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch-site:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch index.html
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+
+          old = '''<div class="locationrow"><div class="locdot">B</div><div><b>Boommarkt</b><p>Telefoonbunker.</p></div></div><button class="hudbtn" onclick="go('dossiers')">ALLE DOSSIERS →</button>'''
+          new = '''<div class="locationrow"><div class="locdot">B</div><div><b>Boommarkt</b><p>Telefoonbunker.</p></div></div><div class="locationrow" onclick="haarlemmerweg()" style="cursor:pointer"><div class="locdot">C</div><div><b>Haarlemmerweg</b><p>Telefoonbunker · onderzoek.</p></div></div><button class="hudbtn" onclick="go('dossiers')">ALLE DOSSIERS →</button>'''
+          assert old in s, 'HOME locations block not found'
+          s = s.replace(old, new, 1)
+
+          old = '''<div class="statusline"><span>BOOMMARKT</span><span>ONDERZOEK</span></div><div class="statusline"><span>3D MODEL</span><b>PROTOTYPE</b></div>'''
+          new = '''<div class="statusline"><span>BOOMMARKT</span><span>ONDERZOEK</span></div><div class="statusline"><span>HAARLEMMERWEG</span><span>ONDERZOEK</span></div><div class="statusline"><span>3D MODEL</span><b>PROTOTYPE</b></div>'''
+          assert old in s, 'status block not found'
+          s = s.replace(old, new, 1)
+
+          old = '''<div class="card" onclick="boommarkt()"><h3>Telefoonbunker Boommarkt</h3><p>Historische opmeting nabij de voormalige PTT-centrale.</p><span class="badge">ONDERZOEK</span></div></div></section>'''
+          new = '''<div class="card" onclick="boommarkt()"><h3>Telefoonbunker Boommarkt</h3><p>Historische opmeting nabij de voormalige PTT-centrale.</p><span class="badge">ONDERZOEK</span></div><div class="card" onclick="haarlemmerweg()"><h3>Telefoonbunker Haarlemmerweg</h3><p>Kleine Duitse telefoonbunker die in 2015 bij werkzaamheden opnieuw aan het licht kwam.</p><span class="badge">ONDERZOEK</span></div></div></section>'''
+          assert old in s, 'dossiers block not found'
+          s = s.replace(old, new, 1)
+
+          anchor = '''function boommarkt(){modal(`<div class='k'>ONDERZOEKSDOSSIER</div><h2>TELEFOONBUNKER BOOMMARKT</h2><img src="oude%20locatie%20bunker%20boommarkt.jpg"><p class='copy'>Historische locatie aan de Boommarkt; verdere documentatie wordt toegevoegd naarmate het onderzoek vordert.</p>`) }'''
+          if anchor not in s:
+              anchor = '''function boommarkt(){modal(`<div class='k'>ONDERZOEKSDOSSIER</div><h2>TELEFOONBUNKER BOOMMARKT</h2><img src="oude%20locatie%20bunker%20boommarkt.jpg"><p class='copy'>Historische locatie aan de Boommarkt; verdere documentatie wordt toegevoegd naarmate het onderzoek vordert.</p>`) }'''.replace('`) }','`)}')
+          assert anchor in s, 'boommarkt function not found'
+          add = '''\nfunction haarlemmerweg(){modal(`<div class='k'>ONDERZOEKSDOSSIER · HAARLEMMERWEG</div><h2>KLEINE TELEFOONBUNKER HAARLEMMERWEG</h2><div class='techdetail'><img src="2016vvdw23_opgraving%20bunker%20haarlemmerweg.jpg"><div><p class='copy'>Bij werkzaamheden aan de Haarlemmerweg kwam in 2015 een Duitse telefoonbunker uit de Tweede Wereldoorlog opnieuw aan het licht. De precieze technische functie binnen het Leidse netwerk en de relatie met andere locaties blijven onderdeel van onderzoek.</p><div class='techfacts'><div>LOCATIE</div><div>Haarlemmerweg, Leiden</div><div>TYPE</div><div>kleine telefoonbunker</div><div>VONDST</div><div>2015 · tijdens werkzaamheden</div><div>STATUS</div><div>onderzoekslocatie</div></div><p class='warn'>Een secundaire Leidse inventarisatie noemt 1942 als bouwjaar en vermeldt dat de bunker later is gesloopt en onder de grond verwerkt. Dit behandelen we voorlopig als onderzoeksinformatie.</p><a class='ghostbtn' href='https://www.erfgoedleiden.nl/nieuws/vondst-van-de-week/790-vvdw23-bunker-aan-de-haarlemmerweg' target='_blank' rel='noopener'>BRON · ERFGOED LEIDEN →</a></div></div><h3>BRONMATERIAAL</h3><div class='thumbrow'><img onclick="photo('2016vvdw23_Bouwtekening%20haarlemmerweg.jpg','Haarlemmerweg · bouwtekening')" src="2016vvdw23_Bouwtekening%20haarlemmerweg.jpg"><img onclick="photo('2016vvdw23_Kaart%20bunker%20haarlemmerweg.jpg','Haarlemmerweg · locatiekaart')" src="2016vvdw23_Kaart%20bunker%20haarlemmerweg.jpg"><img onclick="photo('2016vvdw23_sloop%20bunker%20haarlemmerweg.jpg','Haarlemmerweg · sloop / werkzaamheden')" src="2016vvdw23_sloop%20bunker%20haarlemmerweg.jpg"></div>`,true)}\n'''
+          s = s.replace(anchor, anchor + add, 1)
+          p.write_text(s, encoding='utf-8')
+      - name: Commit site update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "Add Haarlemmerweg research location"
+          git push
