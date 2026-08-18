@@ -1,0 +1,82 @@
+name: Patch newspaper reader and sounds
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event.issue.title == 'trigger-reader-sounds-patch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch site
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+
+          css='''
+/* reader + sound controls */
+.soundbar{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.soundbtn{border:1px solid var(--gold);background:#0b0f0b;color:var(--a2);padding:9px 11px;border-radius:5px;font:800 10px monospace;cursor:pointer}.soundbtn.playing{background:var(--a);color:#171309}.newsreader{height:min(72vh,820px);position:relative;overflow:hidden;background:#080a08;border:1px solid var(--line);border-radius:7px;cursor:grab;touch-action:none}.newsreader.dragging{cursor:grabbing}.newsreader img{position:absolute;left:0;top:0;max-width:none;max-height:none;user-select:none;pointer-events:none;transform-origin:0 0}.readerbar{display:flex;gap:7px;flex-wrap:wrap;margin:10px 0}.readerbar button{background:#111611;color:#ddd3b8;border:1px solid var(--gold);padding:8px 11px;border-radius:5px;cursor:pointer}.reader-meta{color:#b9af99;font-size:12px;line-height:1.5;margin:6px 0 10px}
+'''
+          if '/* reader + sound controls */' not in s:
+            s=s.replace('</style>',css+'\n</style>')
+
+          old="""function sloop(){modal(`<div class='k'>DOSSIER · 1984</div><h2>POGING TOT SLOOP</h2><div class='techdetail'><img src=\"poging%20tot%20sloop.jpg\"><div><p class='copy'>Deze foto hoort bij de daadwerkelijke slooppoging. De gechipte noordoosthoek dateert van een later moment.</p><button class='ghostbtn' onclick=\"photo('bunker%20expolsieven.png','Krantenartikel · poging tot sloop')\">OPEN KRANTENARTIKEL →</button></div></div>`)}"""
+          new="""function sloop(){modal(`<div class='k'>DOSSIER · 1984</div><h2>POGING TOT SLOOP</h2><div class='techdetail'><img src=\"poging%20tot%20sloop.jpg\"><div><p class='copy'>Deze foto hoort bij de daadwerkelijke slooppoging. De gechipte noordoosthoek dateert van een later moment.</p><button class='ghostbtn' onclick=\"openNewspaper()\">OPEN KRANTENARTIKEL →</button></div></div>`)}"""
+          s=s.replace(old,new)
+
+          ff_old="""<h3>Demonstratie</h3><div class='video'><iframe src=\"https://www.youtube-nocookie.com/embed/x15UQcb5QJc\" title=\"FF33 demonstratie\" allowfullscreen></iframe></div>"""
+          ff_new="""<h3>Luister</h3><div class='soundbar'><button class='soundbtn' onclick=\"playSound('telephone-ring-old-german-w48-.mp3',this)\">▶ TELEFOONBEL</button><button class='soundbtn' onclick=\"playSound('radio-transmission-morse-code.mp3',this)\">▶ MORSE / RADIO</button></div><h3>Demonstratie</h3><div class='video'><iframe src=\"https://www.youtube-nocookie.com/embed/x15UQcb5QJc\" title=\"FF33 demonstratie\" allowfullscreen></iframe></div>"""
+          s=s.replace(ff_old,ff_new)
+
+          hes_old="""<h3>Huidige situatie</h3><div class='techdetail'><img src=\"interieur-schakelruimte.jpg\"><p class='copy'>Zicht in de huidige schakelruimte op de plaats waar de HES-installatie heeft gestaan.</p></div>"""
+          hes_new="""<h3>Luister</h3><div class='soundbar'><button class='soundbtn' onclick=\"playSound('fan.mp3',this)\">▶ VENTILATOR 1</button><button class='soundbtn' onclick=\"playSound('fan2.mp3',this)\">▶ VENTILATOR 2</button></div><h3>Huidige situatie</h3><div class='techdetail'><img src=\"interieur-schakelruimte.jpg\"><p class='copy'>Zicht in de huidige schakelruimte op de plaats waar de HES-installatie heeft gestaan.</p></div>"""
+          s=s.replace(hes_old,hes_new)
+
+          marker='/* 2026-08-18 reader + sounds */'
+          if marker not in s:
+            js=r'''
+<script>
+/* 2026-08-18 reader + sounds */
+let activeSound=null,activeSoundBtn=null;
+function playSound(src,btn){
+  if(activeSound){activeSound.pause();activeSound.currentTime=0;if(activeSoundBtn)activeSoundBtn.classList.remove('playing');if(activeSoundBtn===btn){activeSound=null;activeSoundBtn=null;return}}
+  const a=new Audio(src);a.preload='auto';a.volume=.72;activeSound=a;activeSoundBtn=btn;if(btn)btn.classList.add('playing');
+  a.onended=()=>{if(btn)btn.classList.remove('playing');activeSound=null;activeSoundBtn=null};
+  a.onerror=()=>{if(btn)btn.classList.remove('playing');activeSound=null;activeSoundBtn=null};
+  a.play().catch(()=>{if(btn)btn.classList.remove('playing')});
+}
+
+// Subtiele interfaceklik; niet op sleep/zoom en niet tijdens tekstinvoer.
+const uiClick=new Audio('mouseclick.mp3');uiClick.volume=.16;
+document.addEventListener('click',e=>{const el=e.target.closest('button,.techpanel,.card,.hotspot,.locationrow');if(!el||el.classList.contains('soundbtn'))return;try{uiClick.currentTime=0;uiClick.play().catch(()=>{})}catch(_){}});
+
+let nrScale=1,nrX=0,nrY=0,nrDrag=false,nrLX=0,nrLY=0;
+function openNewspaper(){
+  modal(`<div class='k'>BRON · 29 AUGUSTUS 1984</div><h2>Afbraak bunker aan Morsweg onwaarschijnlijk</h2><div class='reader-meta'>Krantenartikel over de voorgenomen sloop van de bunker aan de Morsweg. Gebruik FIT voor het hele artikel of zoom in en sleep naar de gewenste kolom.</div><div class='readerbar'><button onclick=\"newspaperZoom(1.25)\">＋</button><button onclick=\"newspaperZoom(.8)\">−</button><button onclick=\"fitNewspaper()\">FIT</button><button onclick=\"newspaperZoom(1.7)\">LEESSTAND</button></div><div class='newsreader' id='newsreader'><img id='newsimg' src='bunker%20expolsieven.png' alt='Krantenartikel poging tot sloop'></div>`,true);
+  requestAnimationFrame(()=>{wireNewspaper();fitNewspaper()});
+}
+function newsApply(){const im=document.getElementById('newsimg');if(im)im.style.transform=`translate(${nrX}px,${nrY}px) scale(${nrScale})`}
+function fitNewspaper(){const st=document.getElementById('newsreader'),im=document.getElementById('newsimg');if(!st||!im)return;const go=()=>{if(!im.naturalWidth)return;nrScale=Math.min(st.clientWidth/im.naturalWidth,st.clientHeight/im.naturalHeight);nrX=(st.clientWidth-im.naturalWidth*nrScale)/2;nrY=(st.clientHeight-im.naturalHeight*nrScale)/2;newsApply()};if(im.complete)go();else im.onload=go}
+function newspaperZoom(f){const st=document.getElementById('newsreader'),im=document.getElementById('newsimg');if(!st||!im)return;const cx=st.clientWidth/2,cy=st.clientHeight/2,ns=Math.max(.05,Math.min(6,nrScale*f));const wx=(cx-nrX)/nrScale,wy=(cy-nrY)/nrScale;nrX=cx-wx*ns;nrY=cy-wy*ns;nrScale=ns;newsApply()}
+function wireNewspaper(){const st=document.getElementById('newsreader');if(!st||st.dataset.wired)return;st.dataset.wired='1';st.addEventListener('wheel',e=>{e.preventDefault();const r=st.getBoundingClientRect(),cx=e.clientX-r.left,cy=e.clientY-r.top,ns=Math.max(.05,Math.min(6,nrScale*(e.deltaY<0?1.14:.88))),wx=(cx-nrX)/nrScale,wy=(cy-nrY)/nrScale;nrX=cx-wx*ns;nrY=cy-wy*ns;nrScale=ns;newsApply()},{passive:false});st.addEventListener('pointerdown',e=>{nrDrag=true;nrLX=e.clientX;nrLY=e.clientY;st.setPointerCapture(e.pointerId);st.classList.add('dragging')});st.addEventListener('pointermove',e=>{if(!nrDrag)return;nrX+=e.clientX-nrLX;nrY+=e.clientY-nrLY;nrLX=e.clientX;nrLY=e.clientY;newsApply()});st.addEventListener('pointerup',()=>{nrDrag=false;st.classList.remove('dragging')});st.addEventListener('pointercancel',()=>{nrDrag=false;st.classList.remove('dragging')})}
+</script>
+'''
+            s=s.replace('</body>',js+'\n</body>')
+
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Commit
+        run: |
+          git config user.name "chatgpt-site-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add index.html
+          git commit -m "Add readable newspaper viewer and contextual sounds" || exit 0
+          git push
