@@ -1,0 +1,68 @@
+name: Patch interaction audio and plan zoom
+on:
+  push:
+    paths:
+      - '.interaction-audio-trigger'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch index
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text(encoding='utf-8')
+
+          # Make reticle click explicit and audible before navigation/modal action.
+          s=s.replace('onclick="go(\'bunker\');event.stopPropagation()"','onclick="playUiClick(.48);go(\'bunker\');event.stopPropagation()"')
+          s=s.replace('onclick="boommarkt();event.stopPropagation()"','onclick="playUiClick(.48);boommarkt();event.stopPropagation()"')
+
+          # Make Gassluis technical card and 3D hotspot open a dossier.
+          s=s.replace('<div class="hotspot"><b>03 · GASSLUIS</b>','<div class="hotspot" onclick="gassluis()"><b>03 · GASSLUIS</b>')
+          s=s.replace('<div class="card"><h3>Gassluis</h3><p>Gasdichte overgang tussen buitenwereld en beschermde binnenruimte.</p></div>','<div class="card" onclick="gassluis()"><h3>Gassluis</h3><p>Gasdichte overgang tussen buitenwereld en beschermde binnenruimte.</p><span class="badge">OPEN DOSSIER</span></div>')
+
+          # Add sound buttons to emergency exit dossier.
+          old="function nooduitgang(){modal(`<div class='k'>TECHNISCH DOSSIER</div><h2>NOODUITGANG</h2><div class='techdetail'><img src=\"zicht%20op%20de%20nooduitgang%20vanuit%20de%20gang.jpeg\"><div><p class='copy'>De nooduitgang bood een alternatieve route uit de bunker wanneer de hoofdtoegang niet bruikbaar was. De foto toont het huidige zicht vanuit de gang.</p><div class='techfacts'><div>FUNCTIE</div><div>alternatieve uitgang</div><div>LOCATIE</div><div>bereikbaar vanuit de gang</div></div></div></div>`,true)}"
+          new="function nooduitgang(){modal(`<div class='k'>TECHNISCH DOSSIER</div><h2>NOODUITGANG</h2><div class='techdetail'><img src=\"zicht%20op%20de%20nooduitgang%20vanuit%20de%20gang.jpeg\"><div><p class='copy'>De nooduitgang bood een alternatieve route uit de bunker wanneer de hoofdtoegang niet bruikbaar was. De foto toont het huidige zicht vanuit de gang.</p><div class='techfacts'><div>FUNCTIE</div><div>alternatieve uitgang</div><div>LOCATIE</div><div>bereikbaar vanuit de gang</div></div><h3>Luister</h3><div class='soundbar'><button class='soundbtn' onclick=\"playContextSound('nood',0,this)\">▶ NOODUITGANG OPENEN</button></div></div></div>`,true)}"
+          if old in s: s=s.replace(old,new)
+
+          # Add a Gassluis dossier with two contextual sounds.
+          anchor='function nooduitgang(){'
+          if 'function gassluis(){' not in s and anchor in s:
+              g="""function gassluis(){modal(`<div class='k'>TECHNISCH DOSSIER · BESCHERMDE TOEGANG</div><h2>GASSLUIS</h2><div class='techdetail'><img src=\"gasssluis.jpg\"><div><p class='copy'>De gassluis vormde de beschermde overgang tussen buiten en de gasdichte binnenruimte. De deuren werden na elkaar gebruikt zodat de beschermde toestand van de bunker zo veel mogelijk behouden bleef.</p><div class='techfacts'><div>FUNCTIE</div><div>beschermde overgang</div><div>PRINCIPE</div><div>deuren na elkaar openen en sluiten</div></div><h3>Luister</h3><div class='soundbar'><button class='soundbtn' onclick=\"playContextSound('gas',0,this)\">▶ SLUIS · GELUID 1</button><button class='soundbtn' onclick=\"playContextSound('gas',1,this)\">▶ SLUIS · GELUID 2</button></div></div></div>`,true)}
+"""
+              s=s.replace(anchor,g+anchor,1)
+
+          # Add explicit UI click helper and repository-aware contextual sound discovery.
+          marker="const uiClick=new Audio('mouseclick.mp3');uiClick.volume=.14;"
+          if marker in s and 'function playUiClick(' not in s:
+              repl="""const uiClick=new Audio('mouseclick.mp3');uiClick.volume=.14;
+function playUiClick(volume=.14){try{const a=new Audio('mouseclick.mp3');a.volume=volume;a.play().catch(()=>{})}catch(_){}}
+let contextSoundFiles=null;
+async function getContextSounds(){if(contextSoundFiles)return contextSoundFiles;try{const r=await fetch('https://api.github.com/repos/FritsGroen/bunkerleiden-prototype/contents/');const j=await r.json();contextSoundFiles=(Array.isArray(j)?j:[]).map(x=>x.name).filter(n=>/\\.mp3$/i.test(n));}catch(_){contextSoundFiles=[]}return contextSoundFiles}
+async function playContextSound(kind,index,btn){const files=await getContextSounds();let matches;if(kind==='gas')matches=files.filter(n=>/(gas|gass|sluis)/i.test(n));else matches=files.filter(n=>/(nood|uitgang|exit|emergency)/i.test(n));if(!matches.length){btn.textContent='GELUID NOG NIET GEVONDEN';setTimeout(()=>btn.textContent=kind==='gas'?'▶ SLUIS · GELUID '+(index+1):'▶ NOODUITGANG OPENEN',1800);return}playSound(matches[Math.min(index,matches.length-1)],btn)}
+"""
+              s=s.replace(marker,repl,1)
+
+          # Avoid double generic UI click when reticles already play the stronger click.
+          s=s.replace("const el=e.target.closest('button,.techpanel,.card,.hotspot,.locationrow');if(!el||el.classList.contains('soundbtn'))return;","const el=e.target.closest('button,.techpanel,.card,.hotspot,.locationrow');if(!el||el.classList.contains('soundbtn')||el.classList.contains('reticle'))return;")
+
+          # Mouse-centred zoom for plan viewer. Keep toolbar +/- centred.
+          old="function fitPlan(){let st=planstage,c=plancanvas;ps=Math.min(st.clientWidth/c.width,st.clientHeight/c.height);px=(st.clientWidth-c.width*ps)/2;py=(st.clientHeight-c.height*ps)/2;prot=0;planApply()}function planZoom(f){ps=Math.max(.05,Math.min(8,ps*f));planApply()}function planRot(d){prot=(prot+d)%360;planApply()}function wirePlan(){planstage.addEventListener('wheel',e=>{e.preventDefault();planZoom(e.deltaY<0?1.15:.87)},{passive:false});"
+          new="function fitPlan(){let st=planstage,c=plancanvas;ps=Math.min(st.clientWidth/c.width,st.clientHeight/c.height);px=(st.clientWidth-c.width*ps)/2;py=(st.clientHeight-c.height*ps)/2;prot=0;planApply()}function planZoomAt(f,cx,cy){const ns=Math.max(.05,Math.min(8,ps*f)),wx=(cx-px)/ps,wy=(cy-py)/ps;px=cx-wx*ns;py=cy-wy*ns;ps=ns;planApply()}function planZoom(f){let st=planstage;planZoomAt(f,st.clientWidth/2,st.clientHeight/2)}function planRot(d){prot=(prot+d)%360;planApply()}function wirePlan(){planstage.addEventListener('wheel',e=>{e.preventDefault();const r=planstage.getBoundingClientRect();planZoomAt(e.deltaY<0?1.15:.87,e.clientX-r.left,e.clientY-r.top)},{passive:false});"
+          if old in s: s=s.replace(old,new,1)
+
+          p.write_text(s,encoding='utf-8')
+          PY
+      - name: Commit
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git diff --cached --quiet && exit 0
+          git commit -m 'Improve plan zoom and contextual bunker sounds'
+          git push
