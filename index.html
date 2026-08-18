@@ -74,5 +74,53 @@ window.addEventListener('load',()=>requestAnimationFrame(()=>centerR616(1)));win
 let ps=1,px=0,py=0,prot=0,pdrag=false,plx=0,ply=0;function planApply(){let c=document.getElementById('plancanvas');if(c)c.style.transform=`translate(${px}px,${py}px) scale(${ps}) rotate(${prot}deg)`}
 async function openPlan(){modal(`<div class='k'>INTERACTIEVE BRONVIEWER</div><h2>Historische plattegrond R616</h2><div class='planbar'><button onclick="planZoom(1.25)">＋</button><button onclick="planZoom(.8)">−</button><button onclick="planRot(-90)">↶</button><button onclick="planRot(90)">↷</button><button onclick="fitPlan()">RESET</button></div><div class='planstage' id='planstage'><canvas id='plancanvas'></canvas><div id='planload' style='padding:20px;font:11px monospace;color:#cdb85c'>TIFF WORDT GELADEN…</div></div>`,true);try{let b=await fetch('plattegrond%20onder%20de%2025mb.tif').then(r=>r.arrayBuffer()),ifs=UTIF.decode(b);UTIF.decodeImage(b,ifs[0]);let rgba=UTIF.toRGBA8(ifs[0]),c=plancanvas,ctx=c.getContext('2d');c.width=ifs[0].width;c.height=ifs[0].height;let im=ctx.createImageData(c.width,c.height);im.data.set(rgba);ctx.putImageData(im,0,0);planload.remove();fitPlan();wirePlan()}catch(e){planload.textContent='De TIFF kon niet worden weergegeven op dit apparaat.'}}
 function fitPlan(){let st=planstage,c=plancanvas;ps=Math.min(st.clientWidth/c.width,st.clientHeight/c.height);px=(st.clientWidth-c.width*ps)/2;py=(st.clientHeight-c.height*ps)/2;prot=0;planApply()}function planZoom(f){ps=Math.max(.05,Math.min(8,ps*f));planApply()}function planRot(d){prot=(prot+d)%360;planApply()}function wirePlan(){planstage.addEventListener('wheel',e=>{e.preventDefault();planZoom(e.deltaY<0?1.15:.87)},{passive:false});planstage.addEventListener('pointerdown',e=>{pdrag=true;plx=e.clientX;ply=e.clientY;planstage.setPointerCapture(e.pointerId)});planstage.addEventListener('pointermove',e=>{if(!pdrag)return;px+=e.clientX-plx;py+=e.clientY-ply;plx=e.clientX;ply=e.clientY;planApply()});planstage.addEventListener('pointerup',()=>pdrag=false)}
+
+/* 2026-08-18: scherpe kaartlabels + verbeterde 3D betonviewer */
+(function(){
+  const frame=document.getElementById('mapframe'),world=document.getElementById('mapworld');
+  const labelMW=world&&world.querySelector('.targetlabel.mw'),labelBM=world&&world.querySelector('.targetlabel.bm');
+  if(frame&&world){
+    [labelMW,labelBM].forEach(el=>{if(el){frame.appendChild(el);el.style.transform='none';el.style.transformOrigin='left top';el.style.willChange='left,top';el.style.textRendering='geometricPrecision';el.style.webkitFontSmoothing='antialiased'}});
+    function positionLabels(){const w=world.offsetWidth,h=world.offsetHeight;if(!w||!h)return;[[labelMW,.334,.366],[labelBM,.415,.430]].forEach(([el,x,y])=>{if(el){el.style.left=Math.round(panX+x*w*mapScale)+'px';el.style.top=Math.round(panY+y*h*mapScale)+'px'}})}
+    applyMap=function(){world.style.setProperty('--inv',1/mapScale);world.style.transform=`translate3d(${panX}px,${panY}px,0) scale(${mapScale})`;positionLabels()};
+    positionLabels();
+  }
+
+  const intro=document.querySelector('#three .threed-head .copy'),hud=document.querySelector('#three .modelhud'),note=document.querySelector('#three .modelnote');
+  if(intro)intro.textContent='Sleep met de muis om vrij 360° rond het model te draaien. Zoom met muiswiel of pinch. Het model zelf kan niet worden gewijzigd.';
+  if(hud)hud.textContent='SLEEP = 360° DRAAIEN · MUISWIEL/PINCH = ZOOM · GEEN BEWERKING';
+  if(note)note.innerHTML='<b>BRON & MODELUPDATE</b><br>Bron 3D-model: eigen digitale reconstructie voor Stichting Bunker Leiden · <b>Assembly1.stl</b> · model in ontwikkeling.<br><br>Een verbeterde versie kan later met exact dezelfde bestandsnaam worden vervangen zonder de websitecode aan te passen.';
+
+  let keyLight=null,floorMesh=null;
+  function makeConcreteTexture(){
+    const c=document.createElement('canvas');c.width=c.height=512;const x=c.getContext('2d'),im=x.createImageData(512,512),d=im.data;
+    for(let i=0;i<d.length;i+=4){const n=98+Math.random()*48;d[i]=n*1.02;d[i+1]=n;d[i+2]=n*.94;d[i+3]=255}x.putImageData(im,0,0);
+    for(let i=0;i<230;i++){const px=Math.random()*512,py=Math.random()*512,r=2+Math.random()*20,g=x.createRadialGradient(px,py,0,px,py,r);g.addColorStop(0,'rgba(30,28,24,'+(0.025+Math.random()*.10)+')');g.addColorStop(1,'rgba(30,28,24,0)');x.fillStyle=g;x.beginPath();x.arc(px,py,r,0,Math.PI*2);x.fill()}
+    const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(5,5);t.encoding=THREE.sRGBEncoding;if(renderer3)t.anisotropy=Math.min(8,renderer3.capabilities.getMaxAnisotropy());return t;
+  }
+
+  init3D=function(){
+    if(threeReady){resize3D();return}
+    const canvas=document.getElementById('stlviewer'),wrap=document.getElementById('modelwrap');if(!canvas||!wrap)return;
+    scene3=new THREE.Scene();camera3=new THREE.PerspectiveCamera(38,wrap.clientWidth/wrap.clientHeight,.1,100000);
+    renderer3=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true,powerPreference:'high-performance'});renderer3.setPixelRatio(Math.min(devicePixelRatio,2));renderer3.setSize(wrap.clientWidth,wrap.clientHeight,false);renderer3.outputEncoding=THREE.sRGBEncoding;renderer3.shadowMap.enabled=true;renderer3.shadowMap.type=THREE.PCFSoftShadowMap;renderer3.toneMapping=THREE.ACESFilmicToneMapping;renderer3.toneMappingExposure=.92;
+    scene3.add(new THREE.HemisphereLight(0xc7cdc1,0x151713,.68));
+    keyLight=new THREE.DirectionalLight(0xffdfad,2.25);keyLight.castShadow=true;keyLight.shadow.mapSize.set(2048,2048);scene3.add(keyLight);
+    const fill=new THREE.DirectionalLight(0x9daabe,.34);fill.position.set(-2,1,-1);scene3.add(fill);
+    controls3=new THREE.OrbitControls(camera3,canvas);controls3.enablePan=false;controls3.enableRotate=true;controls3.enableZoom=true;controls3.enableDamping=true;controls3.dampingFactor=.07;controls3.rotateSpeed=.62;controls3.zoomSpeed=.82;controls3.mouseButtons.LEFT=THREE.MOUSE.ROTATE;controls3.mouseButtons.MIDDLE=THREE.MOUSE.DOLLY;controls3.mouseButtons.RIGHT=THREE.MOUSE.ROTATE;controls3.touches.ONE=THREE.TOUCH.ROTATE;controls3.touches.TWO=THREE.TOUCH.DOLLY_ROTATE;controls3.minPolarAngle=.08;controls3.maxPolarAngle=Math.PI-.08;
+    const loader=new THREE.STLLoader();loader.load('Assembly1.stl',g=>showGeometry(g),undefined,()=>{modelload.innerHTML='STL KON NIET WORDEN GELADEN<br><span style="color:#9c947f;font-size:9px">CONTROLEER Assembly1.stl IN MAIN</span>'});
+    threeReady=true;animate3D();window.addEventListener('resize',resize3D);
+  };
+
+  showGeometry=function(g){
+    g.computeVertexNormals();g.computeBoundingBox();const c=new THREE.Vector3();g.boundingBox.getCenter(c);g.translate(-c.x,-c.y,-c.z);g.computeBoundingBox();g.computeBoundingSphere();const rad=g.boundingSphere.radius,tex=makeConcreteTexture();
+    const mat=new THREE.MeshStandardMaterial({map:tex,bumpMap:tex,bumpScale:rad*.00115,color:0x87847c,roughness:.97,metalness:.01,side:THREE.DoubleSide});mesh3=new THREE.Mesh(g,mat);mesh3.castShadow=true;mesh3.receiveShadow=true;scene3.add(mesh3);
+    const floorMat=new THREE.MeshStandardMaterial({color:0x151713,roughness:1,metalness:0});floorMesh=new THREE.Mesh(new THREE.PlaneGeometry(rad*7,rad*7),floorMat);floorMesh.rotation.x=-Math.PI/2;floorMesh.position.y=g.boundingBox.min.y-rad*.035;floorMesh.receiveShadow=true;scene3.add(floorMesh);
+    keyLight.position.set(rad*2.3,rad*3.4,rad*2.1);keyLight.target=mesh3;keyLight.shadow.camera.left=-rad*2;keyLight.shadow.camera.right=rad*2;keyLight.shadow.camera.top=rad*2;keyLight.shadow.camera.bottom=-rad*2;keyLight.shadow.camera.near=rad*.05;keyLight.shadow.camera.far=rad*8;keyLight.shadow.bias=-.00015;keyLight.shadow.normalBias=rad*.00015;keyLight.shadow.camera.updateProjectionMatrix();
+    camera3.position.set(rad*1.62,rad*.88,rad*1.72);camera3.near=Math.max(rad/1500,.05);camera3.far=rad*20;camera3.updateProjectionMatrix();controls3.target.set(0,0,0);controls3.minDistance=rad*.72;controls3.maxDistance=rad*4.5;controls3.update();modelload.style.display='none';
+  };
+
+  animate3D=function(){anim3=requestAnimationFrame(animate3D);if(controls3)controls3.update();if(renderer3)renderer3.render(scene3,camera3)};
+})();
 </script>
 </body></html>
