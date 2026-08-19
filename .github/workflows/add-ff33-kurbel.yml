@@ -15,13 +15,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Patch FF33 Kurbel interaction
-        run: python scripts/add_ff33_kurbel_interaction.py
+      - name: Update FF33 Kurbel resting image
+        run: python scripts/update_ff33_kurbel_still.py
       - name: Commit website update
         run: |
           if git diff --quiet; then exit 0; fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add index.html index_BACKUP_2026-08-19_1155.html
-          git commit -m "Add hold-to-turn FF33 Kurbel interaction"
+          git add index.html index_BACKUP_2026-08-19_1206.html
+          git commit -m "Use side-view still for FF33 Kurbel demo"
           git push
