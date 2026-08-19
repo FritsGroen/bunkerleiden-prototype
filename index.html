@@ -54,6 +54,39 @@ header{position:sticky;top:0;z-index:60;background:#050705f5;border-bottom:1px s
 }
 </style>
 
+
+<style id="MOBILE-HOME-3D-NEAT-20260819">
+@media(max-width:850px){
+  /* Titel en intro weer boven de kaart */
+  #home .home-head{order:1!important;padding:16px 18px 10px!important}
+  #home .home-mapcol{order:2!important;padding:0 10px 0!important}
+  #home .home-left{order:3!important}
+  #home .home-right{order:4!important}
+  #home .home-head h1{font-size:clamp(29px,9vw,43px)!important;line-height:1.02;margin:6px 0 8px!important}
+  #home .home-head p{margin:0!important;font-size:11px!important;line-height:1.45!important}
+
+  /* Kleine kaartbediening, echt op de kaart */
+  #home .zoom{left:8px!important;bottom:8px!important;display:flex!important;border-radius:5px!important}
+  #home .zoom button{width:30px!important;height:30px!important;font-size:15px!important;line-height:30px!important;border-bottom:0!important;border-right:1px solid var(--line)!important;padding:0!important}
+  #home .zoom button:last-child{border-right:0!important;font-size:14px!important}
+  #home .targetbar{top:8px!important;right:8px!important;padding:3px!important;gap:3px!important}
+  #home .targetbar button{padding:6px 8px!important;font-size:8px!important}
+
+  /* Iets compacter zodat kaart + titel mooi boven de mobiele balk passen */
+  #home .home-mapcol .mapframe{height:46vh!important;min-height:315px!important;max-height:440px!important}
+
+  /* 3D: hele bunker zichtbaar bij eerste load */
+  #three .threed-head{padding:14px 18px 10px!important}
+  #three .threed-head h1{font-size:clamp(30px,9vw,42px)!important;margin:5px 0 8px!important}
+  #three .threed-head p{font-size:11px!important;line-height:1.45!important;margin:0!important}
+  #three .threed-clean-stage .modelwrap{height:48vh!important;min-height:330px!important;max-height:470px!important}
+}
+@media(max-width:430px){
+  #home .home-mapcol .mapframe{height:44vh!important;min-height:300px!important}
+  #three .threed-clean-stage .modelwrap{height:46vh!important;min-height:315px!important}
+}
+</style>
+
 </head>
 <body class="home-view">
 <header><div class="top"><img class="slogo" src="stichting-bunker-leiden-dark.png" alt="Stichting Bunker Leiden" onclick="go('over')"><div class="brand"><b>CONTROL ROOM 616</b><span>STICHTING BUNKER LEIDEN · MORSWEG</span></div><button class="adminbtn" onclick="adminLogin()">ADMIN</button><div class="status">R616<b>ONLINE</b></div></div><nav><button class="active" data-s="home" onclick="go('home')">HOME</button><button data-s="bunker" onclick="go('bunker')">R616</button><button data-s="three" onclick="go('three')">3D BUNKER</button><button data-s="missies" onclick="go('missies')">MISSIES</button><button data-s="dossiers" onclick="go('dossiers')">DOSSIERS</button><button data-s="techniek" onclick="go('techniek')">TECHNIEK</button><button data-s="toekomst" onclick="go('toekomst')">TOEKOMST</button><button data-s="over" onclick="go('over')">OVER</button></nav></header>
@@ -263,6 +296,47 @@ window.addEventListener('load',()=>requestAnimationFrame(()=>centerR616(1)));win
   });
   const img=document.querySelector('#mapworld .mapimg');
   if(img) img.addEventListener('load',()=>setTimeout(mobileCenterHomeMap,30));
+})();
+</script>
+
+
+<script id="mobile-map-3d-framing-20260819">
+(function(){
+  function neatMobileMap(){
+    if(!matchMedia('(max-width:850px)').matches) return;
+    if(typeof centerR616!=='function' || !window.mapframe || !window.mapworld) return;
+    /* >=1.65 voorkomt de lege strook links terwijl R616 exact centraal blijft. */
+    requestAnimationFrame(()=>centerR616(1.68));
+  }
+  function neatMobile3D(){
+    if(!matchMedia('(max-width:850px)').matches) return;
+    if(!window.camera3 || !window.controls3 || !window.mesh3 || !mesh3.geometry) return;
+    const g=mesh3.geometry;
+    if(!g.boundingSphere) g.computeBoundingSphere();
+    if(!g.boundingBox) g.computeBoundingBox();
+    const rad=g.boundingSphere.radius;
+    const h=g.boundingBox.max.y-g.boundingBox.min.y;
+    camera3.position.set(rad*2.65,rad*1.38,rad*2.8);
+    controls3.target.set(0,h*.02,0);
+    controls3.update();
+  }
+
+  window.addEventListener('load',()=>setTimeout(neatMobileMap,140));
+  window.addEventListener('resize',()=>setTimeout(()=>{neatMobileMap();neatMobile3D()},80));
+
+  document.addEventListener('click',e=>{
+    const b=e.target.closest('button');
+    if(!b) return;
+    if(b.dataset.s==='home' || /HOME/i.test(b.textContent||'')) setTimeout(neatMobileMap,90);
+    if(b.dataset.s==='three' || /3D BUNKER/i.test(b.textContent||'')) setTimeout(neatMobile3D,350);
+  });
+
+  /* STL wordt asynchroon geladen; wacht tot het model beschikbaar is. */
+  let tries=0;
+  const timer=setInterval(()=>{
+    if(window.mesh3){ neatMobile3D(); clearInterval(timer); }
+    else if(++tries>40) clearInterval(timer);
+  },250);
 })();
 </script>
 
