@@ -1,0 +1,29 @@
+name: Reorder technique sections
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/reorder-technique-sections.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Backup current index
+        run: cp index.html index_BACKUP_2026-08-19_1131.html
+      - name: Reorder technique sections
+        run: python scripts/reorder_technique_sections.py
+      - name: Commit website update
+        run: |
+          if git diff --quiet && [ -z "$(git status --porcelain)" ]; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html index_BACKUP_2026-08-19_1131.html
+          git commit -m "Prioritize telephone and measurement technique dossiers"
+          git push
