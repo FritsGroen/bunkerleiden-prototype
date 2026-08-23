@@ -34,3 +34,4 @@ s=s.replace(marker,replacement,1)
 
 p.write_text(s,encoding='utf-8')
 print('Disabled serial-port chooser on ordinary public Morse page')
+# workflow trigger 2026-08-23 13:02
