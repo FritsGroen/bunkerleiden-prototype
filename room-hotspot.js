@@ -1,11 +1,11 @@
-/* R616 3D interactive rooms + POI configuration — corrected plan mapping — 2026-08-23 */
+/* R616 3D interactive rooms + POI configuration — corrected swapped-axis plan mapping — 2026-08-23 */
 (function(){
   'use strict';
 
   const GOLD=0xe4b719, GOLD2=0xffd84b;
 
   /* Coordinates are normalized to the FULL bunker footprint on the numbered historic plan.
-     The STL local X/Z axes run opposite to that plan; worldXZ() handles that conversion. */
+     Plan X (left-right) maps to -STL Z; plan Z (top-street) maps to +STL X. */
   const ROOMS=[
     {id:'01',name:'SCHAKELRUIMTE',        x:.647,z:.342,w:.315,d:.245,h:.47,tech:'SCHAKELRUIMTE'},
     {id:'03',name:'GASSLUIS',             x:.738,z:.544,w:.135,d:.115,h:.44,tech:'GASSLUIS'},
@@ -39,8 +39,7 @@
   }
 
   function worldXZ(x,z){
-    /* Both STL horizontal axes are reversed relative to the supplied plan/top view. */
-    return {x:bbox.max.x-size.x*x,z:bbox.min.z+size.z*z};
+    return {x:bbox.min.x+size.x*z,z:bbox.max.z-size.z*x};
   }
 
   function roomY(room){
@@ -65,7 +64,7 @@
 
   function makeRoom(room,wrap){
     const p=worldXZ(room.x,room.z),yy=roomY(room);
-    const geo=new THREE.BoxGeometry(size.x*room.w,yy.sy,size.z*room.d);
+    const geo=new THREE.BoxGeometry(size.x*room.d,yy.sy,size.z*room.w);
     const detect=new THREE.Mesh(geo,new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false,depthTest:false,colorWrite:false,side:THREE.DoubleSide}));
     detect.position.set(p.x,yy.cy,p.z);detect.userData.r616Key='room'+room.id;detect.renderOrder=80;scene3.add(detect);
 
@@ -90,7 +89,6 @@
     const halo=new THREE.Mesh(new THREE.SphereGeometry(radius*2.7,18,12),new THREE.MeshBasicMaterial({color:GOLD,transparent:true,opacity:.18,depthTest:false,depthWrite:false,blending:THREE.AdditiveBlending}));
     halo.position.copy(core.position);halo.renderOrder=119;scene3.add(halo);
 
-    /* Intentionally generous hit sphere: POIs must remain easy to target inside a room volume. */
     const hit=new THREE.Mesh(new THREE.SphereGeometry(radius*5.0,14,10),new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthTest:false,depthWrite:false,colorWrite:false}));
     hit.position.copy(core.position);hit.userData.r616Key='poi'+poi.id;scene3.add(hit);
 
@@ -174,8 +172,6 @@
     function hit(e){
       const r=rendererCanvas.getBoundingClientRect();
       pt.x=((e.clientX-r.left)/r.width)*2-1;pt.y=-((e.clientY-r.top)/r.height)*2+1;ray.setFromCamera(pt,camera3);
-
-      /* POIs deliberately win over the larger room hit boxes they sit inside. */
       const poiTargets=[...items.values()].filter(i=>i.type==='poi').map(i=>i.detect).filter(Boolean);
       let hs=ray.intersectObjects(poiTargets,false);if(hs.length)return hs[0].object.userData.r616Key;
       const roomTargets=[...items.values()].filter(i=>i.type==='room').map(i=>i.detect).filter(Boolean);
@@ -204,7 +200,6 @@
         const wave=(Math.sin(t*.0035+it.phase)+1)*.5;
         it.core.scale.setScalar(1+wave*.20);it.halo.scale.setScalar(.90+wave*.42);it.halo.material.opacity=.10+wave*.16;
       }
-      /* A parent room may remain glowing for a child POI, but only the actively hovered item gets a label. */
       const show=ownActive(it);if(!it.label)return;
       const p=it.anchor.clone().project(camera3),onscreen=p.z>-1&&p.z<1;
       it.label.style.display=(show&&onscreen)?'block':'none';
