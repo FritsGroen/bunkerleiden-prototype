@@ -1,25 +1,45 @@
-/* R616 3D interactive rooms + POI configuration — corrected swapped-axis plan mapping — 2026-08-23 */
+/* R616 3D interactive rooms + POI configuration — contour volumes from historic plan — 2026-08-23 */
 (function(){
   'use strict';
 
   const GOLD=0xe4b719, GOLD2=0xffd84b;
 
-  /* Coordinates are normalized to the FULL bunker footprint on the numbered historic plan.
-     Plan X (left-right) maps to -STL Z; plan Z (top-street) maps to +STL X. */
+  /*
+    Room polygons are normalized against the full historic-plan bunker footprint.
+    They follow the black contours supplied on the plan instead of generic boxes.
+    Plan X (left-right) maps to -STL Z; plan Z (top-street) maps to +STL X.
+  */
   const ROOMS=[
-    {id:'01',name:'SCHAKELRUIMTE',        x:.647,z:.342,w:.315,d:.245,h:.47,tech:'SCHAKELRUIMTE'},
-    {id:'03',name:'GASSLUIS',             x:.738,z:.544,w:.135,d:.115,h:.44,tech:'GASSLUIS'},
-    {id:'04',name:'NOODUITGANG',          x:.469,z:.432,w:.055,d:.080,h:.44,tech:'NOODUITGANG'},
-    {id:'05',name:'NAHKAMPFRAUM',         x:.764,z:.722,w:.095,d:.145,h:.44,tech:'NAHKAMPFRAUM'},
-    {id:'06',name:'ONDERHOUDSCORRIDOR',   x:.424,z:.490,w:.128,d:.490,h:.44,tech:'ONDERHOUD'},
-    {id:'07',name:'TOEGANG NAAR TOBRUK',  x:.105,z:.700,w:.070,d:.120,h:.44,tech:'TOBRUK'},
-    {id:'10',name:'HOOFDINGANG',          x:.561,z:.550,w:.150,d:.100,h:.44,tech:'HOOFDINGANG'}
+    {id:'01',name:'SCHAKELRUIMTE',h:.47,tech:'SCHAKELRUIMTE',poly:[
+      [.4895,.2192],[.8040,.2192],[.8040,.4629],[.4895,.4629]
+    ]},
+    {id:'03',name:'GASSLUIS',h:.44,tech:'GASSLUIS',poly:[
+      [.6699,.4764],[.7402,.4782],[.7402,.5101],[.8040,.5101],[.8040,.5930],
+      [.7342,.5930],[.7342,.6280],[.6843,.6280],[.6843,.5930],[.6699,.5930]
+    ]},
+    {id:'04',name:'NOODUITGANG',h:.44,tech:'NOODUITGANG',poly:[
+      [.4366,.4052],[.4871,.4052],[.4871,.4438],[.4366,.4438]
+    ]},
+    {id:'05',name:'NAHKAMPFRAUM',h:.44,tech:'NAHKAMPFRAUM',poly:[
+      [.6735,.6280],[.7402,.6280],[.7402,.6605],[.8010,.6605],[.8040,.7735],
+      [.7114,.7735],[.6729,.6802]
+    ]},
+    {id:'06',name:'ONDERHOUDSCORRIDOR',h:.44,tech:'ONDERHOUD',poly:[
+      [.3620,.2192],[.4366,.2192],[.4366,.7262],[.3620,.7262]
+    ]},
+    {id:'07',name:'TOEGANG NAAR TOBRUK',h:.44,tech:'TOBRUK',poly:[
+      [.0746,.6262],[.1419,.6274],[.1401,.6661],[.1155,.6661],[.1155,.7170],[.0746,.7170]
+    ]},
+    {id:'10',name:'HOOFDINGANG',h:.44,tech:'HOOFDINGANG',poly:[
+      [.4883,.5187],[.6362,.5218],[.6356,.5924],[.5947,.5924],[.5767,.6065],
+      [.5767,.7262],[.5262,.7262],[.5262,.5899],[.4883,.5899]
+    ]}
   ];
 
   const POIS=[
-    {id:'02',name:'HES',                   x:.652,z:.450,parent:'01',tech:'HES'},
-    {id:'08',name:'WT80K',                 x:.786,z:.450,parent:'01',tech:'WT80K'},
-    {id:'09',name:'KEV · VERBINDINGEN',    x:.517,z:.243,parent:'01',tech:'KEV'}
+    {id:'02',name:'HES',x:.652,z:.450,parent:'01',tech:'HES'},
+    {id:'08',name:'WT80K',x:.786,z:.450,parent:'01',tech:'WT80K'},
+    {id:'09',name:'KEV · VERBINDINGEN',x:.517,z:.243,parent:'01',tech:'KEV'}
   ];
 
   const items=new Map();
@@ -42,10 +62,40 @@
     return {x:bbox.min.x+size.x*z,z:bbox.max.z-size.z*x};
   }
 
+  function polygonCentroid(poly){
+    let a=0,cx=0,cz=0;
+    for(let i=0;i<poly.length;i++){
+      const p=poly[i],q=poly[(i+1)%poly.length];
+      const cross=p[0]*q[1]-q[0]*p[1];
+      a+=cross;cx+=(p[0]+q[0])*cross;cz+=(p[1]+q[1])*cross;
+    }
+    if(Math.abs(a)<1e-8){
+      return {x:poly.reduce((s,p)=>s+p[0],0)/poly.length,z:poly.reduce((s,p)=>s+p[1],0)/poly.length};
+    }
+    a*=.5;
+    return {x:cx/(6*a),z:cz/(6*a)};
+  }
+
   function roomY(room){
     const sy=size.y*room.h;
     const yLow=bbox.min.y+size.y*.085;
     return {sy,yLow,cy:yLow+sy*.5,yTop:yLow+sy};
+  }
+
+  function makeRoomGeometry(room,yy){
+    const shape=new THREE.Shape();
+    room.poly.forEach((pt,i)=>{
+      const w=worldXZ(pt[0],pt[1]);
+      /* After rotateX(-90°): shape X -> world X, shape Y -> -world Z. */
+      if(i===0)shape.moveTo(w.x,-w.z);else shape.lineTo(w.x,-w.z);
+    });
+    shape.closePath();
+    const geo=new THREE.ExtrudeGeometry(shape,{depth:yy.sy,steps:1,bevelEnabled:false,curveSegments:1});
+    geo.rotateX(-Math.PI/2);
+    geo.translate(0,yy.yLow,0);
+    geo.computeBoundingBox();
+    geo.computeBoundingSphere();
+    return geo;
   }
 
   function makeLabel(entry,type,wrap){
@@ -63,16 +113,16 @@
   }
 
   function makeRoom(room,wrap){
-    const p=worldXZ(room.x,room.z),yy=roomY(room);
-    const geo=new THREE.BoxGeometry(size.x*room.d,yy.sy,size.z*room.w);
+    const yy=roomY(room),geo=makeRoomGeometry(room,yy);
     const detect=new THREE.Mesh(geo,new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false,depthTest:false,colorWrite:false,side:THREE.DoubleSide}));
-    detect.position.set(p.x,yy.cy,p.z);detect.userData.r616Key='room'+room.id;detect.renderOrder=80;scene3.add(detect);
+    detect.userData.r616Key='room'+room.id;detect.renderOrder=80;scene3.add(detect);
 
     const glow=new THREE.Mesh(geo.clone(),new THREE.MeshBasicMaterial({color:GOLD,transparent:true,opacity:.17,depthWrite:false,depthTest:false,side:THREE.DoubleSide}));
-    glow.position.copy(detect.position);glow.visible=false;glow.renderOrder=100;scene3.add(glow);
-    const edges=new THREE.LineSegments(new THREE.EdgesGeometry(glow.geometry),new THREE.LineBasicMaterial({color:GOLD2,transparent:true,opacity:.88,depthWrite:false,depthTest:false}));
+    glow.visible=false;glow.renderOrder=100;scene3.add(glow);
+    const edges=new THREE.LineSegments(new THREE.EdgesGeometry(glow.geometry,20),new THREE.LineBasicMaterial({color:GOLD2,transparent:true,opacity:.90,depthWrite:false,depthTest:false}));
     edges.renderOrder=101;glow.add(edges);
 
+    const c=polygonCentroid(room.poly),p=worldXZ(c.x,c.z);
     const label=makeLabel(room,'room',wrap),key='room'+room.id;
     items.set(key,{key,type:'room',data:room,detect,glow,label,anchor:new THREE.Vector3(p.x,yy.yTop+size.y*.025,p.z),hover:false,labelHover:false,cardHover:false});
   }
@@ -172,6 +222,7 @@
     function hit(e){
       const r=rendererCanvas.getBoundingClientRect();
       pt.x=((e.clientX-r.left)/r.width)*2-1;pt.y=-((e.clientY-r.top)/r.height)*2+1;ray.setFromCamera(pt,camera3);
+      /* POIs deliberately win over the larger room volumes they sit inside. */
       const poiTargets=[...items.values()].filter(i=>i.type==='poi').map(i=>i.detect).filter(Boolean);
       let hs=ray.intersectObjects(poiTargets,false);if(hs.length)return hs[0].object.userData.r616Key;
       const roomTargets=[...items.values()].filter(i=>i.type==='room').map(i=>i.detect).filter(Boolean);
@@ -213,7 +264,7 @@
     const wrap=document.getElementById('modelwrap');if(!wrap)return false;
     ROOMS.forEach(r=>makeRoom(r,wrap));POIS.forEach(p=>makePoi(p,wrap));wireCards();wirePointer();
     if(!raf)raf=requestAnimationFrame(updateLabelsAndPulse);
-    console.info('R616 hotspots:',ROOMS.length,'ruimtes +',POIS.length,'POIs');return true;
+    console.info('R616 hotspots:',ROOMS.length,'contourruimtes +',POIS.length,'POIs');return true;
   }
 
   function init(){addStyles();wireCards();build()}
