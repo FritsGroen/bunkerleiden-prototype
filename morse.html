@@ -439,6 +439,11 @@ if(MUSEUM_WEB_MODE){
   window.toggleEsp32=function(){connectMuseumLan(true)};
   setTimeout(()=>connectMuseumLan(false),900);
 }
+else if(!DIRECT_SERIAL_MODE){
+  // PUBLIC_MOUSE_ONLY
+  const b=$('serialBtn');if(b)b.style.display='none';
+  setSerialStatus('MUIS ACTIEF');
+}
 
 </script>
 </body>
