@@ -24,12 +24,12 @@
 
   <div class="lead">
     <div><div class="k">FERNSPRECHDIENST · LEREN DOOR DOEN</div><h2 style="margin:5px 0 0">HAAL ALLE DRIE NIVEAUS</h2></div>
-    <p>De bestaande Morse-trainer, nu speelbaar met de Baumuster T1 op het scherm. Houd de muisknop kort ingedrukt voor een punt en langer voor een streep. De toon is 800 Hz; de punt/streepgrens is 250 ms.</p>
+    <p>De bestaande Morse-trainer, nu speelbaar met de Baumeister T1 op het scherm. Houd de muisknop kort ingedrukt voor een punt en langer voor een streep. De toon is 800 Hz; de punt/streepgrens is 250 ms.</p>
   </div>
 
   <div class="levels">
     <section id="card1" class="level open active" onclick="showLevel(1)"><span id="badge1" class="badge ok">ONTGRENDELD</span><h3>01 · HOREN EN NASPELEN</h3><p>Luister letter voor letter naar een woord en sein iedere letter correct terug.</p><div class="best" id="best1">Nog geen score.</div></section>
-    <section id="card2" class="level locked" onclick="showLevel(2)"><span id="badge2" class="badge lock">VERGRENDELD</span><h3>02 · KLINKERS ONTHOUDEN</h3><p>Hoor een klinker, kies de juiste morsecode en sein hem daarna zelf terug.</p><div class="best" id="best2">Nog geen score.</div></section>
+    <section id="card2" class="level locked" onclick="showLevel(2)"><span id="badge2" class="badge lock">VERGRENDELD</span><h3>02 · KLINKERS ONTHOUDEN</h3><p>Luister naar een morsecode, kies het juiste patroon en sein die code daarna zelf terug.</p><div class="best" id="best2">Nog geen score.</div></section>
     <section id="card3" class="level locked" onclick="showLevel(3)"><span id="badge3" class="badge lock">VERGRENDELD</span><h3>03 · BESCHADIGD BUNKERBERICHT</h3><p>Herstel ontbrekende medeklinkers door luisteren, kiezen en correct terugseinen.</p><div class="best" id="best3">Nog geen score.</div></section>
   </div>
 
@@ -46,8 +46,8 @@
 
       <section id="level2" class="hidden">
         <div class="gamehead"><div><div class="k">LEVEL 2</div><h2>KLINKERS ONTHOUDEN</h2></div><span id="l2headbadge" class="badge lock">VERGRENDELD</span></div>
-        <p class="copy">Luister naar de uitgesproken klinker, kies de juiste morsecode en sein die code daarna correct terug.</p>
-        <div class="row"><button class="primary" onclick="startL2()">START LEVEL 2</button><button class="ghost" onclick="speakCurrentVowel()">HERHAAL KLINKER</button><button class="ghost" onclick="replayExpected()">HERHAAL MORSE</button></div>
+        <p class="copy">Luister naar de morsecode van een klinker. Kies het patroon dat je hoorde en sein diezelfde code daarna zelf terug.</p>
+        <div class="row"><button class="primary" onclick="startL2()">START LEVEL 2</button><button class="ghost" onclick="replayExpected()">HERHAAL SIGNAAL</button></div>
         <div class="speaker"><div><b id="l2speaker">NOG NIET GESTART</b><span class="small" id="l2sub">Start de klinkerronde.</span></div></div>
         <div id="l2wheel" class="wheel"><button class="codebtn" onclick="chooseL2('.')">.</button><button class="codebtn" onclick="chooseL2('..')">..</button><button class="codebtn" onclick="chooseL2('.-')">.-</button><button class="codebtn" onclick="chooseL2('..-')">..-</button><button class="codebtn" onclick="chooseL2('---')">---</button></div>
         <div id="l2progress" class="progress"></div><div id="l2msg" class="message">Level 2 opent na een geslaagde Level 1-proef.</div>
@@ -71,11 +71,11 @@
     <aside class="panel keypanel">
       <div class="k">BAUMEISTER T1 · VIRTUELE TASTER</div><h2 style="margin-top:5px">SEIN MET DE MUIS</h2>
       <div id="keywrap" class="keywrap" role="button" tabindex="0" aria-label="Virtuele morsetaster: houd ingedrukt om te seinen">
-        <img id="keyimg" src="morse%20baumeister%20t1.png" alt="Baumuster T1 morsetaster">
+        <img id="keyimg" src="morse%20baumeister%20t1.png" alt="Baumeister T1 morsetaster">
       </div>
       <div class="keyhud"><b><span id="keylamp" class="keylamp"></span>HOUD INGEDRUKT OM TE SEINEN</b>Kort &lt; 250 ms = punt · langer = streep · 700 ms pauze sluit de letter af.</div>
       <div class="inputread">INGEVOERD: <b id="markread">—</b><br><span id="decodedread" class="small">Wacht op een opdracht.</span></div>
-      <div class="instructions">De toets geeft tijdens het indrukken direct een 800 Hz-zijtoon. De afbeelding wisselt tussen de statische en geanimeerde Baumuster T1 uit deze website.</div>
+      <div class="instructions">De toets geeft tijdens het indrukken direct een 800 Hz-zijtoon. De afbeelding wisselt tussen de statische en geanimeerde Baumeister T1 uit deze website.</div>
     </aside>
   </div>
 </div>
@@ -132,9 +132,9 @@ function handleL1(ok,decoded){if(!l1.active)return;l1.attempts++;if(ok){l1.index
 function renderL1(){const box=$('l1progress');box.innerHTML='';for(let i=0;i<Math.max(l1.word.length,5);i++){const s=document.createElement('div');s.className='slot '+(i<l1.index?'done':i===l1.index&&l1.active?'current':'todo');s.textContent=i<l1.word.length?(i<l1.index?l1.word[i]:i===l1.index&&l1.active?'?':'·'):'';box.appendChild(s)}$('l1attempts').textContent=l1.attempts;$('l1mistakes').textContent=l1.mistakes}
 $('l1word').addEventListener('input',()=>{const v=cleanWord($('l1word').value,12);$('l1word').value=v;$('l1threshold').value=suggestedThreshold(v)});
 function startL2(){if(!unlocks.l2){setMsg('l2msg','Level 2 is nog vergrendeld.','bad');return}initAudio();stopInput();l2={active:true,sequence:shuffle(['A','E','I','O','U']),index:0,phase:'listen',attempts:0,mistakes:0,start:performance.now()};renderL2();nextL2()}
-function nextL2(){if(!l2.active)return;l2.phase='listen';expectedLetter=l2.sequence[l2.index];inputMode=null;$('l2speaker').textContent='LUISTER NAAR DE KLINKER';$('l2sub').textContent='Kies daarna de juiste morsecode.';setMsg('l2msg','Welke morsecode hoort bij de uitgesproken klinker?');speakCurrentVowel();renderL2()}
+function nextL2(){if(!l2.active)return;l2.phase='listen';expectedLetter=l2.sequence[l2.index];inputMode=null;$('l2speaker').textContent='LUISTER NAAR HET MORSESIGNAAL';$('l2sub').textContent='Kies daarna precies het patroon dat je hoorde.';setMsg('l2msg','Luister naar de piepjes en kies de juiste morsecode.');renderL2();setTimeout(()=>playLetter(expectedLetter),180)}
 function speakCurrentVowel(){if(!l2.active||!l2.sequence.length)return;const letter=l2.sequence[l2.index];if('speechSynthesis'in window){speechSynthesis.cancel();const u=new SpeechSynthesisUtterance('Klinker '+letter);u.lang='nl-NL';u.rate=.75;speechSynthesis.speak(u)}}
-function chooseL2(code){if(!l2.active||l2.phase!=='listen')return;l2.attempts++;const target=l2.sequence[l2.index];if(code===VOWELS[target]){l2.phase='morse';expectedLetter=target;inputMode='l2';$('l2speaker').textContent='SEIN DE CODE TERUG';$('l2sub').textContent='Gebruik nu de Baumuster T1.';setMsg('l2msg','Juist gekozen. Luister naar de code en sein hem na.','good');playCode(code)}else{l2.mistakes++;setMsg('l2msg','Dat is niet de juiste code. Luister opnieuw naar de klinker.','bad');setTimeout(speakCurrentVowel,500)}renderL2()}
+function chooseL2(code){if(!l2.active||l2.phase!=='listen')return;l2.attempts++;const target=l2.sequence[l2.index];if(code===VOWELS[target]){l2.phase='morse';expectedLetter=target;inputMode='l2';$('l2speaker').textContent='SEIN DE CODE TERUG';$('l2sub').textContent='Gebruik nu de Baumeister T1.';setMsg('l2msg','Juist gekozen. Luister naar de code en sein hem na.','good');playCode(code)}else{l2.mistakes++;setMsg('l2msg','Dat is niet de juiste code. Luister opnieuw naar het morsesignaal.','bad');setTimeout(()=>playLetter(target),500)}renderL2()}
 function handleL2Key(ok,decoded){if(!l2.active||l2.phase!=='morse')return;if(ok){l2.index++;inputMode=null;if(l2.index>=l2.sequence.length){l2.active=false;l2.phase='finished';const ms=performance.now()-l2.start;stopInput();scores.l2Attempts=(scores.l2Attempts||0)+1;register(scores.l2,scoreItem(ms,l2.mistakes));saveScores();if(ms<=50000){unlocks.l3=true;saveUnlocks();setMsg('l2msg','Klinkerronde klaar in '+fmt(ms)+'. Level 3 is ontgrendeld!','good')}else setMsg('l2msg','Klinkerronde klaar in '+fmt(ms)+'. Voor Level 3 moet je onder 50,0 s komen.','bad');$('l2speaker').textContent='RONDE KLAAR';$('l2sub').textContent='Alle vijf klinkers geoefend.';renderL2();renderScores();return}setMsg('l2msg','Goed. Volgende klinker.','good');setTimeout(nextL2,500)}else{l2.mistakes++;setMsg('l2msg','Niet juist ('+decoded+'). Sein dezelfde klinker opnieuw.','bad');setTimeout(()=>playLetter(expectedLetter),500)}renderL2()}
 function renderL2(){const box=$('l2progress');box.innerHTML='';for(let i=0;i<5;i++){const s=document.createElement('div');s.className='slot '+(i<l2.index?'done':i===l2.index&&l2.active?'current':'todo');s.textContent=i<l2.index?'✓':i===l2.index&&l2.active?'?':'·';box.appendChild(s)}$('l2attempts').textContent=l2.attempts;$('l2mistakes').textContent=l2.mistakes}
 function levenshtein(a,b){const d=Array.from({length:a.length+1},()=>Array(b.length+1).fill(0));for(let i=0;i<=a.length;i++)d[i][0]=i;for(let j=0;j<=b.length;j++)d[0][j]=j;for(let i=1;i<=a.length;i++)for(let j=1;j<=b.length;j++)d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1));return d[a.length][b.length]}
