@@ -377,7 +377,7 @@ else setTimeout(autoReconnectEsp32,450);
 // Museum web mode: keep the public GitHub Pages dashboard, but bridge the
 // physical key through the Orange Pi on the bunker LAN. Activate with ?museum=1.
 const MUSEUM_WEB_MODE = new URLSearchParams(location.search).get('museum') === '1';
-const MUSEUM_BRIDGE_URL = new URLSearchParams(location.search).get('bridge') || 'wss://192.168.0.68:8765/ws';
+const MUSEUM_BRIDGE_URL = new URLSearchParams(location.search).get('bridge') || 'ws://192.168.0.68:8765/ws';
 let museumLanSocket = null, museumLanRetry = null;
 
 function setMuseumLanStatus(message,state=''){
@@ -420,7 +420,7 @@ function connectMuseumLan(force=false){
     museumLanSocket=new WebSocket(MUSEUM_BRIDGE_URL);
     museumLanSocket.onopen=()=>setMuseumLanStatus('MUSEUMTASTER · ORANGE PI VERBONDEN','on');
     museumLanSocket.onmessage=e=>handleMuseumLanMessage(e.data);
-    museumLanSocket.onerror=()=>setMuseumLanStatus('BEVEILIGDE MUSEUMBRUG NIET BEREIKBAAR','bad');
+    museumLanSocket.onerror=()=>setMuseumLanStatus('STA LOKAAL NETWERK TOE IN CHROME','bad');
     museumLanSocket.onclose=()=>{
       museumLanSocket=null;
       setMuseumLanStatus('MUSEUMTASTER · OPNIEUW VERBINDEN…','bad');
@@ -428,7 +428,7 @@ function connectMuseumLan(force=false){
     };
   }catch(e){
     museumLanSocket=null;
-    setMuseumLanStatus('BEVEILIGDE MUSEUMBRUG NIET BEREIKBAAR','bad');
+    setMuseumLanStatus('STA LOKAAL NETWERK TOE IN CHROME','bad');
     scheduleMuseumLanReconnect();
   }
 }
