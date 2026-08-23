@@ -1,0 +1,35 @@
+name: Fix 3D room hotspot globals
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fix-room-hotspot-globals.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch lexical Three.js globals
+        shell: python
+        run: |
+          from pathlib import Path
+          p=Path('room-hotspot.js')
+          s=p.read_text(encoding='utf-8')
+          s=s.replace("if(roomBox || !window.mesh3 || !mesh3.geometry || !window.scene3) return false;","if(roomBox || typeof mesh3==='undefined' || !mesh3 || !mesh3.geometry || typeof scene3==='undefined' || !scene3) return false;")
+          s=s.replace("if(!marker||!roomAnchor||!window.camera3||!window.renderer3) return;","if(!marker||!roomAnchor||typeof camera3==='undefined'||typeof renderer3==='undefined'||!camera3||!renderer3) return;")
+          s=s.replace("if(typeof window.go==='function') window.go('techniek');","if(typeof go==='function') go('techniek');")
+          p.write_text(s,encoding='utf-8')
+      - name: Remove one-time workflow
+        run: rm .github/workflows/fix-room-hotspot-globals.yml
+      - name: Commit fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add room-hotspot.js .github/workflows/fix-room-hotspot-globals.yml
+          git commit -m "Fix pilot hotspot access to 3D viewer globals"
+          git push
