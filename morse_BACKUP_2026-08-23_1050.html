@@ -91,6 +91,7 @@ const L3WORDS=['BUNKER','WACHT','KLERK','VELD','ALARM','KUST','STAF','KAMP','POS
 const VOWELS={A:'.-',E:'.',I:'..',O:'---',U:'..-'};
 const isVowel=c=>'AEIOU'.includes(c);
 let scores=loadScores();
+purgeUnsafeL1Scores();
 let unlocks=loadUnlocks();
 let selectedLevel=1;
 let inputMode=null,expectedLetter='',marks='',letterTimer=null,keyDownAt=0,keyPointer=null;
@@ -121,22 +122,11 @@ function isCleanL1Word(v){
          !L1_BLOCK_PARTS.some(x=>n.includes(x)||collapsed.includes(x));
 }
 function purgeUnsafeL1Scores(){
-  // Normalize older localStorage data first so museum kiosks upgraded from an
-  // earlier version cannot break the dashboard.
-  scores = scores && typeof scores==='object' ? scores : {};
-  scores.l1 = scores.l1 && typeof scores.l1==='object' ? scores.l1 : {};
-  scores.l1Attempts = scores.l1Attempts && typeof scores.l1Attempts==='object' ? scores.l1Attempts : {};
-  scores.l2 = Array.isArray(scores.l2) ? scores.l2 : [];
-  scores.l2Attempts = Number.isFinite(scores.l2Attempts) ? scores.l2Attempts : 0;
-  scores.l3 = scores.l3 && typeof scores.l3==='object' ? scores.l3 : {};
-  scores.l3Attempts = scores.l3Attempts && typeof scores.l3Attempts==='object' ? scores.l3Attempts : {};
   let changed=false;
-  for(const w of Object.keys(scores.l1)){if(!isCleanL1Word(w)){delete scores.l1[w];changed=true}}
-  for(const w of Object.keys(scores.l1Attempts)){if(!isCleanL1Word(w)){delete scores.l1Attempts[w];changed=true}}
+  for(const w of Object.keys(scores.l1||{})){if(!isCleanL1Word(w)){delete scores.l1[w];changed=true}}
+  for(const w of Object.keys(scores.l1Attempts||{})){if(!isCleanL1Word(w)){delete scores.l1Attempts[w];changed=true}}
   if(changed)saveScores();
 }
-// Run only after the filter constants/functions above have been initialized.
-purgeUnsafeL1Scores();
 function suggestedThreshold(w){return Math.max(45,Math.max((w||'').length,5)*12)}
 function shuffle(a){a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
 function setMsg(id,text,type=''){const el=$(id);el.textContent=text;el.className='message'+(type?' '+type:'')}
