@@ -1,25 +1,15 @@
-/* R616 3D room pilot — 01 Schakelruimte — plan/top-view aligned — 2026-08-23 */
+/* R616 3D room pilot — 01 Schakelruimte — automatic wall/room detection — 2026-08-23 */
 (function(){
   'use strict';
 
-  const GOLD=0xe4b719;
-  const GOLD2=0xffd84b;
-
-  /* Afgeleid uit de 2D-plattegrond + het 3D-bovenaanzicht in dezelfde oriëntatie.
-     Straatzijde = onderkant van het plan. Alleen ruimte 01 is nu actief. */
-  const ROOM={
-    cxN:0.61,
-    czN:0.41,
-    sxN:0.29,
-    szN:0.25,
-    cyN:0.31,
-    syN:0.42
-  };
-
-  let detectBox=null,glowBox=null,glowEdges=null,marker=null,roomAnchor=null,raf=0,pointerWired=false;
+  const GOLD=0xe4b719, GOLD2=0xffd84b;
+  const GRID=230;
+  const TARGET={xFromLeft:.62,zFromTop:.35};
   const state={roomHover:false,markerHover:false,cardHover:false,selected:false};
 
-  function isActive(){return !!(state.selected||state.roomHover||state.markerHover||state.cardHover)}
+  let detectMesh=null,glowMesh=null,marker=null,roomAnchor=null,raf=0,pointerWired=false;
+
+  function active(){return !!(state.roomHover||state.markerHover||state.cardHover||state.selected)}
 
   function addStyles(){
     if(document.getElementById('room-hotspot-style'))return;
@@ -35,58 +25,44 @@
     document.head.appendChild(s);
   }
 
-  function linkedCard(){
-    return [...document.querySelectorAll('#three .hotspot')].find(el=>/^\s*01\s*·\s*SCHAKELRUIMTE/i.test(el.textContent||''));
-  }
+  function linkedCard(){return [...document.querySelectorAll('#three .hotspot')].find(el=>/^\s*01\s*·\s*SCHAKELRUIMTE/i.test(el.textContent||''))}
 
-  function updateVisualState(){
-    const active=isActive();
-    if(glowBox)glowBox.visible=active;
-    if(glowEdges)glowEdges.visible=active;
-    if(marker){
-      marker.classList.toggle('hot',active&&!state.selected);
-      marker.classList.toggle('selected',!!state.selected);
-    }
+  function updateVisual(){
+    const on=active();
+    if(glowMesh)glowMesh.visible=on;
+    if(marker){marker.classList.toggle('hot',on&&!state.selected);marker.classList.toggle('selected',state.selected)}
     const card=linkedCard();
-    if(card){
-      card.classList.toggle('hot',active&&!state.selected);
-      card.classList.toggle('selected',!!state.selected);
-    }
+    if(card){card.classList.toggle('hot',on&&!state.selected);card.classList.toggle('selected',state.selected)}
   }
 
   function openRoomTech(){
     if(typeof go==='function')go('techniek');
     setTimeout(()=>{
-      const target=document.getElementById('tech-sch-room');
-      if(!target)return;
-      target.scrollIntoView({behavior:'smooth',block:'start'});
-      try{target.animate([{boxShadow:'0 0 0 rgba(228,183,25,0)'},{boxShadow:'0 0 0 1px rgba(228,183,25,.95), 0 0 24px rgba(228,183,25,.25)'},{boxShadow:'0 0 0 rgba(228,183,25,0)'}],{duration:1200})}catch(_){ }
+      const t=document.getElementById('tech-sch-room');
+      if(!t)return;
+      t.scrollIntoView({behavior:'smooth',block:'start'});
+      try{t.animate([{outline:'1px solid transparent'},{outline:'1px solid #e4b719'},{outline:'1px solid transparent'}],{duration:1200})}catch(_){ }
     },90);
   }
 
   function addTechRoom(){
     if(document.getElementById('tech-sch-room'))return;
-    const tech=document.getElementById('techniek');
-    if(!tech)return;
+    const tech=document.getElementById('techniek');if(!tech)return;
     const p=tech.querySelector(':scope > p.copy');
     const box=document.createElement('section');
     box.id='tech-sch-room';box.className='room-tech-intro';
     box.innerHTML=`<div class="k">RUIMTE 01 · 3D BUNKER</div><h3>SCHAKELRUIMTE</h3><p class="copy">Technische kernruimte van de R616. Hier komen kabelinvoer en verdeling, ventilatie/overdruk, elektrische installatie en telefonie samen.</p><div class="room-tech-links"><button type="button" data-room-action="kev">KEV · KABELINVOER</button><button type="button" data-room-action="hes">HES 1.2 · VENTILATIE</button><button type="button" data-room-action="elektra">AEG · ELEKTRA</button></div>`;
     (p||tech.querySelector('h2')).insertAdjacentElement('afterend',box);
-    box.addEventListener('click',e=>{
-      const b=e.target.closest('[data-room-action]');if(!b)return;
-      const fn=window[b.dataset.roomAction];if(typeof fn==='function')fn();
-    });
+    box.addEventListener('click',e=>{const b=e.target.closest('[data-room-action]');if(!b)return;const fn=window[b.dataset.roomAction]||globalThis[b.dataset.roomAction];if(typeof fn==='function')fn()});
   }
 
   function wireCard(){
-    const card=linkedCard();
-    if(!card||card.dataset.room01Wired)return;
+    const card=linkedCard();if(!card||card.dataset.room01Wired)return;
     card.dataset.room01Wired='1';card.classList.add('room01-linked');card.removeAttribute('onclick');
     card.title='Hover/tap: toon Schakelruimte · dubbelklik: Techniek';
-    card.addEventListener('mouseenter',()=>{state.cardHover=true;updateVisualState()});
-    card.addEventListener('mouseleave',()=>{state.cardHover=false;updateVisualState()});
-    card.addEventListener('click',()=>{state.selected=!state.selected;updateVisualState()});
+    card.addEventListener('mouseenter',()=>{state.cardHover=true;updateVisual()});
+    card.addEventListener('mouseleave',()=>{state.cardHover=false;updateVisual()});
+    card.addEventListener('click',()=>{state.selected=!state.selected;updateVisual()});
     card.addEventListener('dblclick',e=>{e.preventDefault();openRoomTech()});
   }
 
@@ -95,82 +71,181 @@
     marker=document.createElement('button');marker.type='button';marker.className='room3d-marker';marker.setAttribute('aria-label','01 Schakelruimte');
     marker.innerHTML='<b>01 · SCHAKELRUIMTE</b><span>klik = vasthouden · dubbelklik = techniek</span>';
     wrap.appendChild(marker);
-    marker.addEventListener('mouseenter',()=>{state.markerHover=true;updateVisualState()});
-    marker.addEventListener('mouseleave',()=>{state.markerHover=false;updateVisualState()});
-    marker.addEventListener('click',e=>{e.stopPropagation();state.selected=!state.selected;updateVisualState()});
+    marker.addEventListener('mouseenter',()=>{state.markerHover=true;updateVisual()});
+    marker.addEventListener('mouseleave',()=>{state.markerHover=false;updateVisual()});
+    marker.addEventListener('click',e=>{e.stopPropagation();state.selected=!state.selected;updateVisual()});
     marker.addEventListener('dblclick',e=>{e.preventDefault();e.stopPropagation();openRoomTech()});
   }
 
-  function buildRoom(){
-    if(detectBox||typeof mesh3==='undefined'||!mesh3||!mesh3.geometry||typeof scene3==='undefined'||!scene3)return false;
-    const g=mesh3.geometry;if(!g.boundingBox)g.computeBoundingBox();
-    const bb=g.boundingBox,size=new THREE.Vector3();bb.getSize(size);
+  function rasterLine(blocked,x0,z0,x1,z1,r){
+    const dx=x1-x0,dz=z1-z0,steps=Math.max(1,Math.ceil(Math.max(Math.abs(dx),Math.abs(dz))*1.6));
+    for(let s=0;s<=steps;s++){
+      const t=s/steps,x=Math.round(x0+dx*t),z=Math.round(z0+dz*t);
+      for(let yy=-r;yy<=r;yy++)for(let xx=-r;xx<=r;xx++){
+        if(xx*xx+yy*yy>r*r)continue;
+        const gx=x+xx,gz=z+yy;if(gx>=0&&gx<GRID&&gz>=0&&gz<GRID)blocked[gz*GRID+gx]=1;
+      }
+    }
+  }
 
-    const cx=bb.min.x+size.x*ROOM.cxN;
-    const cz=bb.min.z+size.z*ROOM.czN;
-    const cy=bb.min.y+size.y*ROOM.cyN;
-    const sx=size.x*ROOM.sxN,sy=size.y*ROOM.syN,sz=size.z*ROOM.szN;
+  function sliceWalls(g,bb,size){
+    const pos=g.getAttribute('position');
+    const ys=[.30,.46,.60].map(n=>bb.min.y+size.y*n);
+    const blocked=new Uint8Array(GRID*GRID);
+    const toGX=x=>(x-bb.min.x)/size.x*(GRID-1);
+    const toGZ=z=>(bb.max.z-z)/size.z*(GRID-1);
+    const eps=size.y*1e-6;
 
-    detectBox=new THREE.Mesh(new THREE.BoxGeometry(sx,sy,sz),new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false,depthTest:false}));
-    detectBox.position.set(cx,cy,cz);detectBox.renderOrder=60;scene3.add(detectBox);
+    function cross(ax,ay,az,bx,by,bz,y,out){
+      const da=ay-y,db=by-y;
+      if(Math.abs(da)<eps&&Math.abs(db)<eps)return;
+      if(!((da<0&&db>0)||(da>0&&db<0)))return;
+      const t=da/(da-db);out.push([ax+(bx-ax)*t,az+(bz-az)*t]);
+    }
 
-    glowBox=new THREE.Mesh(new THREE.BoxGeometry(sx,sy,sz),new THREE.MeshBasicMaterial({color:GOLD,transparent:true,opacity:.20,side:THREE.DoubleSide,depthWrite:false,depthTest:false}));
-    glowBox.position.copy(detectBox.position);glowBox.visible=false;glowBox.renderOrder=80;scene3.add(glowBox);
+    for(let i=0;i<pos.count;i+=3){
+      const ax=pos.getX(i),ay=pos.getY(i),az=pos.getZ(i),bx=pos.getX(i+1),by=pos.getY(i+1),bz=pos.getZ(i+1),cx=pos.getX(i+2),cy=pos.getY(i+2),cz=pos.getZ(i+2);
+      const minY=Math.min(ay,by,cy),maxY=Math.max(ay,by,cy);
+      for(const y of ys){
+        if(y<=minY||y>=maxY)continue;
+        const pts=[];cross(ax,ay,az,bx,by,bz,y,pts);cross(bx,by,bz,cx,cy,cz,y,pts);cross(cx,cy,cz,ax,ay,az,y,pts);
+        if(pts.length===2)rasterLine(blocked,toGX(pts[0][0]),toGZ(pts[0][1]),toGX(pts[1][0]),toGZ(pts[1][1]),2);
+      }
+    }
+    return blocked;
+  }
 
-    glowEdges=new THREE.LineSegments(new THREE.EdgesGeometry(glowBox.geometry),new THREE.LineBasicMaterial({color:GOLD2,transparent:true,opacity:.95,depthTest:false,depthWrite:false}));
-    glowEdges.position.copy(glowBox.position);glowEdges.visible=false;glowEdges.renderOrder=81;scene3.add(glowEdges);
+  function collectComponents(blocked){
+    const seen=new Uint8Array(blocked.length),comps=[];
+    const qx=new Int16Array(blocked.length),qz=new Int16Array(blocked.length);
+    const dirs=[[1,0],[-1,0],[0,1],[0,-1]];
 
-    roomAnchor=new THREE.Vector3(cx,cy+sy*.72,cz);
+    function flood(sx,sz,store){
+      let h=0,t=0;qx[t]=sx;qz[t++]=sz;seen[sz*GRID+sx]=1;
+      const cells=[];let sumX=0,sumZ=0,minX=GRID,minZ=GRID,maxX=0,maxZ=0,touches=false;
+      while(h<t){
+        const x=qx[h],z=qz[h++];
+        if(store){const idx=z*GRID+x;cells.push(idx);sumX+=x;sumZ+=z;minX=Math.min(minX,x);minZ=Math.min(minZ,z);maxX=Math.max(maxX,x);maxZ=Math.max(maxZ,z)}
+        if(x===0||z===0||x===GRID-1||z===GRID-1)touches=true;
+        for(const d of dirs){const nx=x+d[0],nz=z+d[1];if(nx<0||nz<0||nx>=GRID||nz>=GRID)continue;const ni=nz*GRID+nx;if(blocked[ni]||seen[ni])continue;seen[ni]=1;qx[t]=nx;qz[t++]=nz}
+      }
+      return store?{cells,area:cells.length,cx:sumX/cells.length,cz:sumZ/cells.length,minX,minZ,maxX,maxZ,touches}:null;
+    }
+
+    for(let x=0;x<GRID;x++){if(!blocked[x]&&!seen[x])flood(x,0,false);const b=(GRID-1)*GRID+x;if(!blocked[b]&&!seen[b])flood(x,GRID-1,false)}
+    for(let z=0;z<GRID;z++){const l=z*GRID;if(!blocked[l]&&!seen[l])flood(0,z,false);const r=z*GRID+GRID-1;if(!blocked[r]&&!seen[r])flood(GRID-1,z,false)}
+
+    for(let z=1;z<GRID-1;z++)for(let x=1;x<GRID-1;x++){
+      const idx=z*GRID+x;if(blocked[idx]||seen[idx])continue;const c=flood(x,z,true);if(c.area>90)comps.push(c);
+    }
+    return comps;
+  }
+
+  function chooseRoom(comps){
+    if(!comps.length)return null;
+    const tx=TARGET.xFromLeft*(GRID-1),tz=TARGET.zFromTop*(GRID-1);
+    let best=null,bestScore=Infinity;
+    for(const c of comps){
+      const dx=c.cx-tx,dz=c.cz-tz;
+      const w=c.maxX-c.minX+1,h=c.maxZ-c.minZ+1,compact=c.area/(w*h);
+      if(c.area>GRID*GRID*.16)continue;
+      const score=Math.hypot(dx,dz)-Math.min(c.area,6000)*.002-(compact>.42?3:0);
+      if(score<bestScore){best=c;bestScore=score}
+    }
+    return best||comps.sort((a,b)=>Math.hypot(a.cx-tx,a.cz-tz)-Math.hypot(b.cx-tx,b.cz-tz))[0];
+  }
+
+  function contourFromComponent(comp){
+    const member=new Uint8Array(GRID*GRID);for(const idx of comp.cells)member[idx]=1;
+    const edges=[];
+    function add(ax,az,bx,bz){edges.push([[ax,az],[bx,bz]])}
+    for(const idx of comp.cells){
+      const z=Math.floor(idx/GRID),x=idx-z*GRID;
+      if(z===0||!member[(z-1)*GRID+x])add(x,z,x+1,z);
+      if(x===GRID-1||!member[z*GRID+x+1])add(x+1,z,x+1,z+1);
+      if(z===GRID-1||!member[(z+1)*GRID+x])add(x+1,z+1,x,z+1);
+      if(x===0||!member[z*GRID+x-1])add(x,z+1,x,z);
+    }
+    const byStart=new Map();
+    const key=p=>p[0]+','+p[1];
+    edges.forEach((e,i)=>{const k=key(e[0]);if(!byStart.has(k))byStart.set(k,[]);byStart.get(k).push(i)});
+    const used=new Uint8Array(edges.length),loops=[];
+    for(let i=0;i<edges.length;i++){
+      if(used[i])continue;const loop=[];let ei=i,start=edges[ei][0],cur=start,guard=0;
+      while(ei!=null&&!used[ei]&&guard++<edges.length+10){used[ei]=1;const e=edges[ei];loop.push(e[0]);cur=e[1];if(cur[0]===start[0]&&cur[1]===start[1])break;const cand=(byStart.get(key(cur))||[]).find(j=>!used[j]);ei=cand==null?null:cand}
+      if(loop.length>8)loops.push(loop);
+    }
+    if(!loops.length)return null;
+    function area(poly){let a=0;for(let i=0,j=poly.length-1;i<poly.length;j=i++)a+=poly[j][0]*poly[i][1]-poly[i][0]*poly[j][1];return a/2}
+    let poly=loops.sort((a,b)=>Math.abs(area(b))-Math.abs(area(a)))[0];
+    const simple=[];
+    for(let i=0;i<poly.length;i++){
+      const p0=poly[(i-1+poly.length)%poly.length],p1=poly[i],p2=poly[(i+1)%poly.length];
+      if((p0[0]===p1[0]&&p1[0]===p2[0])||(p0[1]===p1[1]&&p1[1]===p2[1]))continue;simple.push(p1);
+    }
+    return simple;
+  }
+
+  function buildPrism(poly,bb,size){
+    const shape=new THREE.Shape();
+    const modelPts=poly.map(p=>new THREE.Vector2(bb.min.x+(p[0]/GRID)*size.x,bb.max.z-(p[1]/GRID)*size.z));
+    if(modelPts.length<3)return false;
+    shape.moveTo(modelPts[0].x,modelPts[0].y);for(let i=1;i<modelPts.length;i++)shape.lineTo(modelPts[i].x,modelPts[i].y);shape.closePath();
+
+    const yLow=bb.min.y+size.y*.08,yHigh=bb.min.y+size.y*.61,depth=yHigh-yLow;
+    const geo=new THREE.ExtrudeGeometry(shape,{depth,bevelEnabled:false,curveSegments:1,steps:1});
+    const p=geo.getAttribute('position');
+    for(let i=0;i<p.count;i++){const x=p.getX(i),z=p.getY(i),dy=p.getZ(i);p.setXYZ(i,x,yLow+dy,z)}
+    p.needsUpdate=true;geo.computeBoundingBox();geo.computeBoundingSphere();
+
+    detectMesh=new THREE.Mesh(geo,new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false,depthTest:false,colorWrite:false,side:THREE.DoubleSide}));
+    detectMesh.renderOrder=90;scene3.add(detectMesh);
+    glowMesh=new THREE.Mesh(geo.clone(),new THREE.MeshBasicMaterial({color:GOLD,transparent:true,opacity:.18,depthWrite:false,depthTest:false,side:THREE.DoubleSide}));
+    glowMesh.visible=false;glowMesh.renderOrder=100;scene3.add(glowMesh);
+    const eg=new THREE.EdgesGeometry(geo,20);
+    const lines=new THREE.LineSegments(eg,new THREE.LineBasicMaterial({color:GOLD2,transparent:true,opacity:.88,depthWrite:false,depthTest:false}));
+    lines.renderOrder=101;glowMesh.add(lines);
+
+    let sx=0,sz=0;for(const q of modelPts){sx+=q.x;sz+=q.y}roomAnchor=new THREE.Vector3(sx/modelPts.length,yHigh+size.y*.03,sz/modelPts.length);
+    console.info('R616 room detector: Schakelruimte contourpunten',poly.length);
     return true;
+  }
+
+  function buildDetectedRoom(){
+    if(detectMesh||typeof mesh3==='undefined'||!mesh3||!mesh3.geometry||typeof scene3==='undefined'||!scene3)return false;
+    const g=mesh3.geometry;if(!g.boundingBox)g.computeBoundingBox();const bb=g.boundingBox,size=new THREE.Vector3();bb.getSize(size);
+    try{
+      const blocked=sliceWalls(g,bb,size),comps=collectComponents(blocked),room=chooseRoom(comps);
+      if(!room)throw new Error('geen afgesloten ruimte gevonden');
+      const poly=contourFromComponent(room);if(!poly)throw new Error('geen kamercontour gevonden');
+      return buildPrism(poly,bb,size);
+    }catch(err){console.warn('R616 room detector mislukt',err);return false}
+  }
+
+  function wirePointer(){
+    if(pointerWired||!detectMesh||typeof renderer3==='undefined'||!renderer3||typeof camera3==='undefined'||!camera3)return;
+    const canvas=renderer3.domElement,ray=new THREE.Raycaster(),pt=new THREE.Vector2();let downX=0,downY=0,moved=false;
+    function hit(e){const r=canvas.getBoundingClientRect();pt.x=((e.clientX-r.left)/r.width)*2-1;pt.y=-((e.clientY-r.top)/r.height)*2+1;ray.setFromCamera(pt,camera3);return ray.intersectObject(detectMesh,false).length>0}
+    canvas.addEventListener('pointerdown',e=>{downX=e.clientX;downY=e.clientY;moved=false});
+    canvas.addEventListener('pointermove',e=>{if(Math.hypot(e.clientX-downX,e.clientY-downY)>6)moved=true;state.roomHover=hit(e);updateVisual()});
+    canvas.addEventListener('pointerleave',()=>{state.roomHover=false;updateVisual()});
+    canvas.addEventListener('click',e=>{if(moved)return;if(hit(e))state.selected=!state.selected;else if(!state.markerHover&&!state.cardHover)state.selected=false;updateVisual()});
+    canvas.addEventListener('dblclick',e=>{if(hit(e)){e.preventDefault();openRoomTech()}});
+    pointerWired=true;
   }
 
   function updateMarker(){
     raf=requestAnimationFrame(updateMarker);
-    if(!marker||!roomAnchor||typeof camera3==='undefined'||!camera3||typeof renderer3==='undefined'||!renderer3)return;
-    const wrap=document.getElementById('modelwrap');if(!wrap)return;
-    const p=roomAnchor.clone().project(camera3),onscreen=p.z>-1&&p.z<1,show=isActive()&&onscreen;
-    marker.style.display=show?'block':'none';
-    if(!show)return;
-    marker.style.left=((p.x*.5+.5)*wrap.clientWidth)+'px';
-    marker.style.top=((-p.y*.5+.5)*wrap.clientHeight)+'px';
-  }
-
-  function wirePointer(){
-    if(pointerWired||typeof renderer3==='undefined'||!renderer3||typeof camera3==='undefined'||!camera3||!detectBox)return;
-    const canvas=renderer3.domElement,raycaster=new THREE.Raycaster(),pointer=new THREE.Vector2();
-    const hitFromEvent=e=>{
-      const r=canvas.getBoundingClientRect();
-      pointer.x=((e.clientX-r.left)/r.width)*2-1;pointer.y=-((e.clientY-r.top)/r.height)*2+1;
-      raycaster.setFromCamera(pointer,camera3);
-      return raycaster.intersectObject(detectBox,false).length>0;
-    };
-    canvas.addEventListener('pointermove',e=>{state.roomHover=hitFromEvent(e);updateVisualState()});
-    canvas.addEventListener('pointerleave',()=>{state.roomHover=false;updateVisualState()});
-    canvas.addEventListener('click',e=>{
-      if(hitFromEvent(e))state.selected=!state.selected;
-      else if(!state.markerHover&&!state.cardHover)state.selected=false;
-      updateVisualState();
-    });
-    canvas.addEventListener('dblclick',e=>{if(hitFromEvent(e)){e.preventDefault();openRoomTech()}});
-    pointerWired=true;
+    if(!marker||!roomAnchor||typeof camera3==='undefined'||!camera3)return;
+    const wrap=document.getElementById('modelwrap');if(!wrap)return;const p=roomAnchor.clone().project(camera3),onscreen=p.z>-1&&p.z<1,show=active()&&onscreen;
+    marker.style.display=show?'block':'none';if(!show)return;marker.style.left=((p.x*.5+.5)*wrap.clientWidth)+'px';marker.style.top=((-p.y*.5+.5)*wrap.clientHeight)+'px';
   }
 
   function init(){
-    addStyles();addTechRoom();wireCard();
-    const wrap=document.getElementById('modelwrap');if(!wrap)return;
-    addMarker(wrap);
-    if(buildRoom()){
-      wirePointer();
-      if(!raf)updateMarker();
-    }
+    addStyles();addTechRoom();wireCard();const wrap=document.getElementById('modelwrap');if(!wrap)return;addMarker(wrap);
+    if(buildDetectedRoom()){wirePointer();if(!raf)updateMarker();updateVisual()}
   }
 
-  let tries=0;
-  const timer=setInterval(()=>{
-    addTechRoom();wireCard();init();
-    const ready=!!detectBox&&typeof renderer3!=='undefined'&&!!renderer3&&typeof camera3!=='undefined'&&!!camera3;
-    if(ready||++tries>100)clearInterval(timer);
-  },180);
-
+  let tries=0;const timer=setInterval(()=>{addTechRoom();wireCard();init();if(detectMesh||++tries>100)clearInterval(timer)},180);
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();
