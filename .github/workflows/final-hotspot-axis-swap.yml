@@ -44,3 +44,5 @@ jobs:
           git add room-hotspot.js .github/workflows/final-hotspot-axis-swap.yml
           git commit -m "Swap hotspot X/Z axes to match historic plan"
           git push
+
+# trigger
