@@ -37,7 +37,7 @@
   }
 
   function openRoomTech(){
-    if(typeof window.go==='function') window.go('techniek');
+    if(typeof go==='function') go('techniek');
     setTimeout(()=>{
       const target=document.getElementById('tech-sch-room');
       if(target){target.scrollIntoView({behavior:'smooth',block:'start'});target.animate([{outline:'1px solid rgba(228,183,25,0)'},{outline:'1px solid #e4b719'},{outline:'1px solid rgba(228,183,25,0)'}],{duration:1200});}
@@ -83,7 +83,7 @@
   }
 
   function buildRoom(){
-    if(roomBox || !window.mesh3 || !mesh3.geometry || !window.scene3) return false;
+    if(roomBox || typeof mesh3==='undefined' || !mesh3 || !mesh3.geometry || typeof scene3==='undefined' || !scene3) return false;
     const g=mesh3.geometry;
     if(!g.boundingBox) g.computeBoundingBox();
     const bb=g.boundingBox, size=new THREE.Vector3();bb.getSize(size);
@@ -105,7 +105,7 @@
 
   function updateMarker(){
     raf=requestAnimationFrame(updateMarker);
-    if(!marker||!roomAnchor||!window.camera3||!window.renderer3) return;
+    if(!marker||!roomAnchor||typeof camera3==='undefined'||typeof renderer3==='undefined'||!camera3||!renderer3) return;
     const p=roomAnchor.clone().project(camera3);
     const wrap=document.getElementById('modelwrap'); if(!wrap) return;
     const visible=p.z>-1&&p.z<1;
