@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import asyncio
 import os
+import ssl
 from pathlib import Path
 
 import serial
@@ -10,6 +11,8 @@ SERIAL_DEVICE = os.environ.get("MORSE_SERIAL", "/dev/ttyUSB0")
 BAUD = int(os.environ.get("MORSE_BAUD", "115200"))
 PORT = int(os.environ.get("MORSE_PORT", "8765"))
 WEB_ROOT = Path(os.environ.get("MORSE_WEB_ROOT", "/opt/bunker-morse/www"))
+CERT_FILE = os.environ.get("MORSE_CERT", "/opt/bunker-morse/tls/server.crt")
+KEY_FILE = os.environ.get("MORSE_KEY", "/opt/bunker-morse/tls/server.key")
 
 clients = set()
 serial_ok = False
@@ -42,7 +45,7 @@ MUSEUM_CLIENT = r'''
     }
     clearTimeout(retry);museumStatus('MUSEUMTASTER · VERBINDEN…');
     try{
-      museumWs=new WebSocket('ws://'+location.host+'/ws');
+      museumWs=new WebSocket('wss://'+location.host+'/ws');
       museumWs.onopen=()=>museumStatus('MUSEUMTASTER · ORANGE PI VERBONDEN','on');
       museumWs.onmessage=e=>route(e.data);
       museumWs.onerror=()=>museumStatus('MUSEUMTASTER · GEEN VERBINDING','bad');
@@ -131,6 +134,7 @@ async def status_handler(request):
         "baud": BAUD,
         "clients": len(clients),
         "last_line": last_serial_line,
+        "tls": Path(CERT_FILE).exists() and Path(KEY_FILE).exists(),
     })
 
 
@@ -174,6 +178,16 @@ def build_app():
     return app
 
 
+def ssl_context():
+    if not (Path(CERT_FILE).exists() and Path(KEY_FILE).exists()):
+        return None
+    ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    ctx.load_cert_chain(CERT_FILE, KEY_FILE)
+    return ctx
+
+
 if __name__ == "__main__":
-    print(f"Bunker Morse bridge: {SERIAL_DEVICE} @ {BAUD} -> http://0.0.0.0:{PORT}/", flush=True)
-    web.run_app(build_app(), host="0.0.0.0", port=PORT, access_log=None)
+    tls = ssl_context()
+    scheme = "https" if tls else "http"
+    print(f"Bunker Morse bridge: {SERIAL_DEVICE} @ {BAUD} -> {scheme}://0.0.0.0:{PORT}/", flush=True)
+    web.run_app(build_app(), host="0.0.0.0", port=PORT, access_log=None, ssl_context=tls)
