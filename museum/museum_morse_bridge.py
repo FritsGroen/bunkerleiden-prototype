@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 import asyncio
-import json
 import os
 from pathlib import Path
 
@@ -15,6 +14,46 @@ WEB_ROOT = Path(os.environ.get("MORSE_WEB_ROOT", "/opt/bunker-morse/www"))
 clients = set()
 serial_ok = False
 last_serial_line = ""
+
+MUSEUM_CLIENT = r'''
+<script>
+(function(){
+  let museumWs=null,retry=null;
+  function museumStatus(text,state){
+    const box=document.getElementById('serialStatus');
+    const txt=document.getElementById('serialStatusText');
+    const btn=document.getElementById('serialBtn');
+    if(txt)txt.textContent=text;
+    if(box)box.className='serialstatus'+(state?' '+state:'');
+    if(btn){btn.textContent=museumWs&&museumWs.readyState===WebSocket.OPEN?'MUSEUMTASTER · VERBONDEN':'MUSEUMTASTER · VERBINDEN';btn.classList.toggle('connected',!!(museumWs&&museumWs.readyState===WebSocket.OPEN));}
+  }
+  function schedule(){clearTimeout(retry);retry=setTimeout(()=>connectMuseum(false),1800)}
+  function route(line){
+    const u=(line||'').trim().toUpperCase();
+    if(u==='BRIDGE:CONNECTED'){museumStatus('MUSEUMTASTER · ORANGE PI VERBONDEN','on');return}
+    if(u==='BRIDGE:SERIAL_ON'||u==='READY'){museumStatus('MUSEUMTASTER · ESP32 GEREED','on');return}
+    if(u==='BRIDGE:SERIAL_OFF'){museumStatus('ORANGE PI BEREIKBAAR · ESP32 NIET GEVONDEN','bad');return}
+    if((u==='TONE:ON'||u==='TONE:OFF')&&typeof handleEspLine==='function')handleEspLine(u);
+  }
+  function connectMuseum(force){
+    if(museumWs&&(museumWs.readyState===WebSocket.OPEN||museumWs.readyState===WebSocket.CONNECTING)){
+      if(!force)return;
+      try{museumWs.close()}catch(e){}
+    }
+    clearTimeout(retry);museumStatus('MUSEUMTASTER · VERBINDEN…');
+    try{
+      museumWs=new WebSocket('ws://'+location.host+'/ws');
+      museumWs.onopen=()=>museumStatus('MUSEUMTASTER · ORANGE PI VERBONDEN','on');
+      museumWs.onmessage=e=>route(e.data);
+      museumWs.onerror=()=>museumStatus('MUSEUMTASTER · GEEN VERBINDING','bad');
+      museumWs.onclose=()=>{museumWs=null;museumStatus('MUSEUMTASTER · OPNIEUW VERBINDEN…','bad');schedule()};
+    }catch(e){museumWs=null;museumStatus('MUSEUMTASTER · GEEN VERBINDING','bad');schedule()}
+  }
+  window.toggleEsp32=function(){connectMuseum(true)};
+  setTimeout(()=>connectMuseum(false),700);
+})();
+</script>
+'''
 
 
 async def broadcast(message: str):
@@ -48,7 +87,6 @@ async def serial_worker(app):
                 if not line:
                     continue
                 last_serial_line = line
-                # The browser only needs live key state plus READY/status.
                 upper = line.upper()
                 if upper in ("TONE:ON", "TONE:OFF", "KEY:DOWN", "KEY:UP", "READY"):
                     await broadcast(upper)
@@ -100,6 +138,16 @@ async def index_handler(request):
     raise web.HTTPFound("/morse.html")
 
 
+async def morse_handler(request):
+    page = WEB_ROOT / "morse.html"
+    if not page.exists():
+        raise web.HTTPNotFound(text="morse.html ontbreekt")
+    html = page.read_text(encoding="utf-8")
+    if "MUSEUMTASTER · ORANGE PI VERBONDEN" not in html:
+        html = html.replace("</body>", MUSEUM_CLIENT + "\n</body>", 1)
+    return web.Response(text=html, content_type="text/html", headers={"Cache-Control": "no-store"})
+
+
 async def on_startup(app):
     app["serial_task"] = asyncio.create_task(serial_worker(app))
 
@@ -117,6 +165,7 @@ async def on_cleanup(app):
 def build_app():
     app = web.Application()
     app.router.add_get("/", index_handler)
+    app.router.add_get("/morse.html", morse_handler)
     app.router.add_get("/ws", ws_handler)
     app.router.add_get("/status", status_handler)
     app.router.add_static("/", str(WEB_ROOT), show_index=False)
