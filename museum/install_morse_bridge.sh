@@ -51,8 +51,13 @@ openssl req -new -key "$TLS_DIR/server.key" -out "$TLS_DIR/server.csr" -subj "/C
 openssl x509 -req -in "$TLS_DIR/server.csr" \
   -CA "$TLS_DIR/bunker-morse-ca.crt" -CAkey "$TLS_DIR/bunker-morse-ca.key" -CAcreateserial \
   -out "$TLS_DIR/server.crt" -days 365 -sha256 -extfile "$TLS_DIR/server.ext"
-chmod 0600 "$TLS_DIR"/*.key
-chmod 0644 "$TLS_DIR"/*.crt
+
+# De systemd-service draait als orangepi. Geef die gebruiker leesrecht op alleen
+# het servercertificaat en de serverkey; de CA-key blijft root-only.
+chown "$RUN_USER":"$RUN_USER" "$TLS_DIR/server.key" "$TLS_DIR/server.crt"
+chmod 0600 "$TLS_DIR/server.key"
+chmod 0644 "$TLS_DIR/server.crt" "$TLS_DIR/bunker-morse-ca.crt"
+chmod 0600 "$TLS_DIR/bunker-morse-ca.key"
 
 cat > "$SERVICE" <<EOF
 [Unit]
