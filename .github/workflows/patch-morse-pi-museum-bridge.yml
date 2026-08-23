@@ -1,0 +1,29 @@
+name: Patch Morse Pi museum bridge
+
+on:
+  push:
+    paths:
+      - 'scripts/patch_morse_pi_museum_bridge.py'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch morse.html
+        run: python3 scripts/patch_morse_pi_museum_bridge.py
+      - name: Commit changes
+        run: |
+          if git diff --quiet && [ -z "$(git status --porcelain)" ]; then
+            echo "Nothing to commit"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add morse.html morse_BACKUP_2026-08-23_1221.html
+          git commit -m "Add Orange Pi museum taster bridge to Morse dashboard"
+          git push
