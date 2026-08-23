@@ -302,9 +302,7 @@ async function disconnectEsp32(){
   espPort=null;espReader=null;setSerialStatus('MUIS ACTIEF');
 }
 async function toggleEsp32(){
-  if(typeof MUSEUM_WEB_MODE!=='undefined'&&MUSEUM_WEB_MODE){connectMuseumLan(true);return}
   if(isMuseumHost()){connectMuseumBridge(true);return}
-  if(typeof DIRECT_SERIAL_MODE!=='undefined'&&!DIRECT_SERIAL_MODE){setSerialStatus('MUIS ACTIEF');return}
   if(espPort){await disconnectEsp32();return}
   if(!('serial' in navigator)){
     setSerialStatus('ECHTE TASTER VEREIST EDGE/CHROME','bad');return;
@@ -374,12 +372,11 @@ if('serial' in navigator){
   navigator.serial.addEventListener('disconnect',()=>{espPort=null;espReading=false;setSerialStatus('ESP32 LOSGEKOPPELD · MUIS ACTIEF','bad')});
 }
 if(isMuseumHost())setTimeout(()=>connectMuseumBridge(false),250);
-else if(new URLSearchParams(location.search).get('serial')==='1')setTimeout(autoReconnectEsp32,450);
+else setTimeout(autoReconnectEsp32,450);
 
 // Museum web mode: keep the public GitHub Pages dashboard, but bridge the
 // physical key through the Orange Pi on the bunker LAN. Activate with ?museum=1.
 const MUSEUM_WEB_MODE = new URLSearchParams(location.search).get('museum') === '1';
-const DIRECT_SERIAL_MODE = new URLSearchParams(location.search).get('serial') === '1';
 const MUSEUM_BRIDGE_URL = new URLSearchParams(location.search).get('bridge') || 'wss://192.168.0.68:8765/ws';
 let museumLanSocket = null, museumLanRetry = null;
 
