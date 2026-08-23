@@ -112,6 +112,29 @@
         if(pts.length===2)rasterLine(blocked,toGX(pts[0][0]),toGZ(pts[0][1]),toGX(pts[1][0]),toGZ(pts[1][1]),2);
       }
     }
+    /* Seal narrow wall openings (mainly doorways) in the analysis raster only.
+       This does not change the STL; it lets the flood-fill recover complete rooms. */
+    const MAX_GAP=Math.round(GRID*.060);
+    for(let z=0;z<GRID;z++){
+      let last=-1;
+      for(let x=0;x<GRID;x++){
+        if(!blocked[z*GRID+x])continue;
+        if(last>=0&&x-last>1&&x-last-1<=MAX_GAP){
+          for(let q=last+1;q<x;q++)blocked[z*GRID+q]=1;
+        }
+        last=x;
+      }
+    }
+    for(let x=0;x<GRID;x++){
+      let last=-1;
+      for(let z=0;z<GRID;z++){
+        if(!blocked[z*GRID+x])continue;
+        if(last>=0&&z-last>1&&z-last-1<=MAX_GAP){
+          for(let q=last+1;q<z;q++)blocked[q*GRID+x]=1;
+        }
+        last=z;
+      }
+    }
     return blocked;
   }
 
@@ -144,15 +167,32 @@
   function chooseRoom(comps){
     if(!comps.length)return null;
     const tx=TARGET.xFromLeft*(GRID-1),tz=TARGET.zFromTop*(GRID-1);
-    let best=null,bestScore=Infinity;
+    const targetArea=GRID*GRID*.050;
+    const candidates=[];
     for(const c of comps){
-      const dx=c.cx-tx,dz=c.cz-tz;
-      const w=c.maxX-c.minX+1,h=c.maxZ-c.minZ+1,compact=c.area/(w*h);
-      if(c.area>GRID*GRID*.16)continue;
-      const score=Math.hypot(dx,dz)-Math.min(c.area,6000)*.002-(compact>.42?3:0);
-      if(score<bestScore){best=c;bestScore=score}
+      const w=c.maxX-c.minX+1,h=c.maxZ-c.minZ+1;
+      const short=Math.max(1,Math.min(w,h)),long=Math.max(w,h);
+      const aspect=long/short,compact=c.area/(w*h);
+      const areaFrac=c.area/(GRID*GRID);
+      /* Schakelruimte is een flinke rechthoekige kamer; reject shafts/corridors. */
+      if(areaFrac<.012||areaFrac>.14)continue;
+      if(aspect>3.15||short<GRID*.055)continue;
+      const dist=Math.hypot(c.cx-tx,c.cz-tz);
+      const aspectPenalty=Math.abs(Math.log(aspect/1.72))*17;
+      const areaPenalty=Math.abs(Math.log(c.area/targetArea))*8;
+      const compactPenalty=Math.max(0,.48-compact)*18;
+      const score=dist*.72+aspectPenalty+areaPenalty+compactPenalty;
+      candidates.push({c,score,aspect,areaFrac,compact});
     }
-    return best||comps.sort((a,b)=>Math.hypot(a.cx-tx,a.cz-tz)-Math.hypot(b.cx-tx,b.cz-tz))[0];
+    candidates.sort((a,b)=>a.score-b.score);
+    console.info('R616 kamer-kandidaten',candidates.slice(0,8).map(v=>({score:+v.score.toFixed(1),aspect:+v.aspect.toFixed(2),area:+v.areaFrac.toFixed(3),cx:+(v.c.cx/(GRID-1)).toFixed(2),cz:+(v.c.cz/(GRID-1)).toFixed(2)})));
+    if(candidates.length)return candidates[0].c;
+    /* Conservative fallback: least corridor-like component near target. */
+    return comps.slice().sort((a,b)=>{
+      const aw=a.maxX-a.minX+1,ah=a.maxZ-a.minZ+1,bw=b.maxX-b.minX+1,bh=b.maxZ-b.minZ+1;
+      const aa=Math.max(aw,ah)/Math.max(1,Math.min(aw,ah)),ba=Math.max(bw,bh)/Math.max(1,Math.min(bw,bh));
+      return (Math.hypot(a.cx-tx,a.cz-tz)+aa*12)-(Math.hypot(b.cx-tx,b.cz-tz)+ba*12);
+    })[0];
   }
 
   function contourFromComponent(comp){
