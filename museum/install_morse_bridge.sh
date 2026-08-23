@@ -24,8 +24,8 @@ chmod 0755 "$APP_DIR/museum_morse_bridge.py"
 # Lokale museumkopie: blijft werken zonder internet zodra hij is geïnstalleerd.
 curl -fsSL "$REPO_RAW/morse.html" -o "$WEB_DIR/morse.html"
 curl -fsSL "$REPO_RAW/stichting-bunker-leiden-dark.png" -o "$WEB_DIR/stichting-bunker-leiden-dark.png"
-curl -fsSL "$REPO_RAW/morse%20baumeister%20t1.png" -o "$WEB_DIR/morse%20baumeister%20t1.png"
-curl -fsSL "$REPO_RAW/morse%20taster%20baumeister%20T1%20interactief%20animated" -o "$WEB_DIR/morse%20taster%20baumeister%20T1%20interactief%20animated"
+curl -fsSL "$REPO_RAW/morse%20baumeister%20t1.png" -o "$WEB_DIR/morse baumeister t1.png"
+curl -fsSL "$REPO_RAW/morse%20taster%20baumeister%20T1%20interactief%20animated" -o "$WEB_DIR/morse taster baumeister T1 interactief animated"
 
 cat > "$SERVICE" <<EOF
 [Unit]
