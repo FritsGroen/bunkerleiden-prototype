@@ -359,7 +359,16 @@
     console.info('R616 hotspots:',ROOMS.length,'ruimtes +',POIS.length,'POIs · dossier routing actief');return true;
   }
 
-  function init(){installModalHistory();addStyles();wireCards();build()}
+  function loadSloopCardVideo(){
+    if(document.querySelector('script[data-sloop-card-video]'))return;
+    const s=document.createElement('script');
+    s.src='video-sloop-card.js';
+    s.defer=true;
+    s.dataset.sloopCardVideo='1';
+    document.head.appendChild(s);
+  }
+
+  function init(){loadSloopCardVideo();installModalHistory();addStyles();wireCards();build()}
   let tries=0;const timer=setInterval(()=>{init();if(items.size||++tries>100)clearInterval(timer)},180);
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
   new MutationObserver(()=>wireCards()).observe(document.body,{childList:true,subtree:true});
