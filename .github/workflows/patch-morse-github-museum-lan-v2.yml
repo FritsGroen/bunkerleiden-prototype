@@ -1,0 +1,25 @@
+name: Apply Morse GitHub museum LAN mode
+
+on:
+  push:
+    paths:
+      - 'scripts/patch_morse_github_museum_lan_v2.py'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply museum web bridge patch
+        run: python scripts/patch_morse_github_museum_lan_v2.py
+      - name: Commit patched dashboard
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add morse.html morse_BACKUP_2026-08-23_1245.html
+          git diff --cached --quiet || git commit -m "Enable museum taster on GitHub Pages"
+          git push
