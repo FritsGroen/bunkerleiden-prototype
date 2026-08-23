@@ -51,3 +51,4 @@ s=s.replace(old,new,1)
 
 p.write_text(s,encoding='utf-8')
 print('Public Morse real-key button now redirects to ?museum=1')
+# workflow trigger 2026-08-23 13:13
