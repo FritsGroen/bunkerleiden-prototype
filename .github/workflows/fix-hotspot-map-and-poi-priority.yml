@@ -144,3 +144,5 @@ jobs:
           git add room-hotspot.js .github/workflows/fix-hotspot-map-and-poi-priority.yml
           git commit -m "Correct hotspot axis mapping and prioritize POIs"
           git push
+
+# second push to trigger workflow after installation
