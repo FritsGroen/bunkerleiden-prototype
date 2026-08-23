@@ -1,0 +1,146 @@
+name: Patch sonar and modal history
+
+on:
+  push:
+    paths:
+      - '.github/workflows/patch-sonar-modal-history.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Patch room hotspot behaviour
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('room-hotspot.js')
+          text = path.read_text(encoding='utf-8')
+
+          old_header = "/* R616 3D interactive rooms + POI configuration — contour volumes + dossier routing — 2026-08-23 */"
+          new_header = "/* R616 3D interactive rooms + POI configuration — contours + dossiers + sonar + modal history — 2026-08-23 */"
+          if old_header not in text:
+              raise SystemExit('Expected room-hotspot header not found; refusing to patch.')
+          text = text.replace(old_header, new_header, 1)
+
+          old_gold = "  const GOLD=0xe4b719, GOLD2=0xffd84b;\n"
+          add_runtime = r'''  const GOLD=0xe4b719, GOLD2=0xffd84b;
+
+  /* POI discovery sound: one sonar ping when the pointer enters a glowing POI. */
+  const poiSonar=new Audio('echo_sonar.mp3');
+  poiSonar.preload='auto';
+  poiSonar.volume=.46;
+  let lastSonarAt=0;
+
+  function playPoiSonar(){
+    const now=performance.now();
+    if(now-lastSonarAt<220)return;
+    lastSonarAt=now;
+    try{
+      poiSonar.pause();
+      poiSonar.currentTime=0;
+      const p=poiSonar.play();
+      if(p&&typeof p.catch==='function')p.catch(()=>{});
+    }catch(_){ }
+  }
+
+  /*
+    Every modal gets one temporary browser-history entry. Browser Back (including a
+    mouse side button) therefore closes the dossier first instead of leaving index.html.
+    The screen that was underneath the modal is restored: Techniek stays Techniek,
+    while a dossier opened from the 3D viewer returns to the 3D viewer.
+  */
+  let modalHistoryInstalled=false;
+  let modalReturnScreen='techniek';
+
+  function activeScreenId(){
+    const active=document.querySelector('.screen.active');
+    return active&&active.id?active.id:'techniek';
+  }
+
+  function installModalHistory(){
+    if(modalHistoryInstalled||typeof window.modal!=='function'||typeof window.closeM!=='function')return;
+    const baseModal=window.modal;
+    const baseCloseM=window.closeM;
+
+    window.modal=function(h,wide=false){
+      const overlay=document.getElementById('ov');
+      const wasOpen=!!(overlay&&overlay.classList.contains('open'));
+      if(!wasOpen){
+        modalReturnScreen=activeScreenId();
+        const nextState=Object.assign({},history.state||{},{r616Modal:true,r616ReturnScreen:modalReturnScreen});
+        history.pushState(nextState,'',location.href);
+      }
+      return baseModal(h,wide);
+    };
+
+    window.closeM=function(){
+      const overlay=document.getElementById('ov');
+      if(overlay&&overlay.classList.contains('open')&&history.state&&history.state.r616Modal){
+        history.back();
+        return;
+      }
+      return baseCloseM();
+    };
+
+    window.addEventListener('popstate',()=>{
+      const overlay=document.getElementById('ov');
+      if(overlay&&overlay.classList.contains('open')){
+        baseCloseM();
+        const target=modalReturnScreen||'techniek';
+        if(typeof window.go==='function'&&document.getElementById(target))window.go(target);
+      }
+    });
+
+    modalHistoryInstalled=true;
+  }
+'''
+          if old_gold not in text:
+              raise SystemExit('Expected GOLD declaration not found; refusing to patch.')
+          text = text.replace(old_gold, add_runtime, 1)
+
+          old_hover = r'''  function setHover(key,on,source){
+    const it=items.get(key);if(!it)return;
+    if(source==='label')it.labelHover=on;else if(source==='card')it.cardHover=on;else it.hover=on;
+    refreshAll();
+  }
+'''
+          new_hover = r'''  function setHover(key,on,source){
+    const it=items.get(key);if(!it)return;
+    const sonarEnter=it.type==='poi'&&source==='scene'&&on&&!it.hover;
+    if(source==='label')it.labelHover=on;else if(source==='card')it.cardHover=on;else it.hover=on;
+    if(sonarEnter)playPoiSonar();
+    refreshAll();
+  }
+'''
+          if old_hover not in text:
+              raise SystemExit('Expected setHover function not found; refusing to patch.')
+          text = text.replace(old_hover, new_hover, 1)
+
+          old_init = "  function init(){addStyles();wireCards();build()}"
+          new_init = "  function init(){installModalHistory();addStyles();wireCards();build()}"
+          if old_init not in text:
+              raise SystemExit('Expected init function not found; refusing to patch.')
+          text = text.replace(old_init, new_init, 1)
+
+          path.write_text(text, encoding='utf-8')
+
+      - name: JavaScript syntax check
+        run: node --check room-hotspot.js
+
+      - name: Commit patch and remove one-time workflow
+        run: |
+          rm .github/workflows/patch-sonar-modal-history.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add room-hotspot.js .github/workflows/patch-sonar-modal-history.yml
+          git commit -m "Add POI sonar and modal back navigation"
+          git push origin main
