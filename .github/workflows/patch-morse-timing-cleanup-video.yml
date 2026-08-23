@@ -1,0 +1,26 @@
+name: Patch Morse timing cleanup and mission video
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/patch-morse-timing-cleanup-video.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - run: python scripts/patch_morse_timing_cleanup_video.py
+      - name: Commit patched files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add morse.html index.html morse_BACKUP_2026-08-23_1103.html index_BACKUP_2026-08-23_1103.html
+          git diff --cached --quiet && exit 0
+          git commit -m "Tighten Morse Level 1 and add mission hover video"
+          git push
