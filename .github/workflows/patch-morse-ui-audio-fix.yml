@@ -1,0 +1,42 @@
+name: Patch Morse UI and Level 2 audio
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/patch-morse-ui-audio-fix.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Patch Morse page
+        run: python scripts/patch_morse_ui_audio_fix.py
+
+      - name: Build Dutch vowel clips
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y espeak ffmpeg
+          mkdir -p audio/vowels /tmp/r616-vowels
+          for v in a e i o u; do
+            espeak -v nl -s 115 -a 180 -w "/tmp/r616-vowels/$v.wav" "$v"
+            ffmpeg -loglevel error -y -i "/tmp/r616-vowels/$v.wav" -c:a libopus -b:a 24k "audio/vowels/$v.ogg"
+          done
+
+      - name: Commit generated fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add morse.html morse_BACKUP_2026-08-23_1027.html audio/vowels
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Fix Morse key overlay and Level 2 vowel audio"
+            git push
+          fi
