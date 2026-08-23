@@ -1,5 +1,6 @@
 from pathlib import Path
 
+# Triggered after the workflow file exists.
 p = Path('morse.html')
 s = p.read_text(encoding='utf-8')
 backup = Path('morse_BACKUP_2026-08-23_1254.html')
