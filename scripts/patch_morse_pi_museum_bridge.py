@@ -100,3 +100,4 @@ s = s.replace(marker, insert, 1)
 
 p.write_text(s, encoding='utf-8')
 print('Patched morse.html for Orange Pi museum bridge')
+# Workflow trigger: museum bridge v1
