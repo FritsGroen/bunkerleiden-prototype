@@ -76,7 +76,7 @@
       </div>
       <div class="keyhud"><b><span id="keylamp" class="keylamp"></span>HOUD INGEDRUKT OM TE SEINEN</b>Kort &lt; 250 ms = punt · langer = streep · 700 ms pauze sluit de letter af.</div>
       <div class="inputread">INGEVOERD: <b id="markread">—</b><br><span id="decodedread" class="small">Wacht op een opdracht.</span></div>
-      <div class="instructions">Sein met de muis of met de fysieke Baumuster T1. Kort indrukken geeft een punt, langer indrukken een streep. Na 700 ms stilte wordt de letter beoordeeld.</div>
+      <div class="instructions">Sein met de muis op de Baumuster T1. Kort indrukken geeft een punt, langer indrukken een streep. Na 700 ms stilte wordt de letter beoordeeld.</div>
     </aside>
   </div>
 </div>
@@ -228,20 +228,16 @@ function newVisitor(){
 setInterval(()=>{if(l1.active)$('l1time').textContent=fmt(elapsed(l1.start,true));if(l2.active)$('l2time').textContent=fmt(elapsed(l2.start,true));if(l3.active)$('l3time').textContent=fmt(elapsed(l3.start,true))},100);
 $('l1word').addEventListener('change',renderScores);renderL1();renderL2();renderL3Word();renderL3Meta();renderCards();renderScores();
 
-// Physical Morse key support. Public site: optional direct Web Serial.
-// Museum: Baumuster T1 -> ESP32 -> Orange Pi -> local WebSocket -> same game logic.
-// Proven ESP32 protocol: 115200 baud, TONE:ON / TONE:OFF.
+// Museum mode: physical Morse key -> ESP32 -> USB Web Serial -> same game logic.
+// Proven ESP32 protocol: 115200 baud, TONE:ON / TONE:OFF. Other protocol lines
+// (MARK, INPUT, LETTER, RESULT, READY) may still arrive and are safely ignored here.
 let espPort=null,espReader=null,espReading=false,espBuffer='';
-let museumSocket=null,museumReconnectTimer=null;
 function setSerialStatus(message,state=''){
   const box=$('serialStatus'),txt=$('serialStatusText'),btn=$('serialBtn');
   if(!box||!txt||!btn)return;
-  const museumConnected=!!(museumSocket&&museumSocket.readyState===WebSocket.OPEN);
-  const connected=!!espPort||museumConnected;
   txt.textContent=message;box.className='serialstatus'+(state?' '+state:'');
-  btn.classList.toggle('connected',connected);
-  if(isMuseumHost())btn.textContent=museumConnected?'MUSEUMTASTER · VERBONDEN':'MUSEUMTASTER · VERBINDEN';
-  else btn.textContent=espPort?'ECHTE TASTER · VERBREKEN':'ECHTE TASTER · VERBINDEN';
+  btn.classList.toggle('connected',!!espPort);
+  btn.textContent=espPort?'ECHTE TASTER · VERBREKEN':'ECHTE TASTER · VERBINDEN';
 }
 async function espSend(command){
   if(!espPort||!espPort.writable)return false;
@@ -302,7 +298,6 @@ async function disconnectEsp32(){
   espPort=null;espReader=null;setSerialStatus('MUIS ACTIEF');
 }
 async function toggleEsp32(){
-  if(isMuseumHost()){connectMuseumBridge(true);return}
   if(espPort){await disconnectEsp32();return}
   if(!('serial' in navigator)){
     setSerialStatus('ECHTE TASTER VEREIST EDGE/CHROME','bad');return;
@@ -324,55 +319,10 @@ async function autoReconnectEsp32(){
     if(ports.length)await openEsp32(ports[0],true);
   }catch{}
 }
-function isMuseumHost(){
-  const h=(location.hostname||'').toLowerCase();
-  return location.protocol==='http:' && (
-    h==='orangepizero2w'||h==='orangepizero2w.local'||h==='localhost'||h==='127.0.0.1'||
-    /^192\.168\./.test(h)||/^10\./.test(h)||/^172\.(1[6-9]|2\d|3[01])\./.test(h)
-  );
-}
-function scheduleMuseumReconnect(){
-  if(!isMuseumHost())return;
-  clearTimeout(museumReconnectTimer);
-  museumReconnectTimer=setTimeout(()=>connectMuseumBridge(false),1800);
-}
-function handleMuseumLine(raw){
-  const upper=(raw||'').trim().toUpperCase();if(!upper)return;
-  if(upper==='BRIDGE:CONNECTED'){
-    setSerialStatus('MUSEUMTASTER · ORANGE PI VERBONDEN','on');return;
-  }
-  if(upper==='BRIDGE:SERIAL_ON'||upper==='READY'){
-    setSerialStatus('MUSEUMTASTER · ESP32 GEREED','on');return;
-  }
-  if(upper==='BRIDGE:SERIAL_OFF'){
-    setSerialStatus('ORANGE PI BEREIKBAAR · ESP32 NIET GEVONDEN','bad');return;
-  }
-  if(upper==='TONE:ON'||upper==='TONE:OFF')handleEspLine(upper);
-}
-function connectMuseumBridge(force=false){
-  if(!isMuseumHost())return;
-  if(museumSocket&&(museumSocket.readyState===WebSocket.OPEN||museumSocket.readyState===WebSocket.CONNECTING)){
-    if(!force)return;
-    try{museumSocket.close()}catch{}
-  }
-  clearTimeout(museumReconnectTimer);
-  setSerialStatus('MUSEUMTASTER · VERBINDEN…');
-  try{
-    const scheme=location.protocol==='https:'?'wss':'ws';
-    museumSocket=new WebSocket(scheme+'://'+location.host+'/ws');
-    museumSocket.onopen=()=>setSerialStatus('MUSEUMTASTER · ORANGE PI VERBONDEN','on');
-    museumSocket.onmessage=e=>handleMuseumLine(e.data);
-    museumSocket.onerror=()=>setSerialStatus('MUSEUMTASTER · GEEN VERBINDING','bad');
-    museumSocket.onclose=()=>{museumSocket=null;setSerialStatus('MUSEUMTASTER · OPNIEUW VERBINDEN…','bad');scheduleMuseumReconnect()};
-  }catch(e){
-    museumSocket=null;setSerialStatus('MUSEUMTASTER · GEEN VERBINDING','bad');scheduleMuseumReconnect();
-  }
-}
 if('serial' in navigator){
   navigator.serial.addEventListener('disconnect',()=>{espPort=null;espReading=false;setSerialStatus('ESP32 LOSGEKOPPELD · MUIS ACTIEF','bad')});
 }
-if(isMuseumHost())setTimeout(()=>connectMuseumBridge(false),250);
-else setTimeout(autoReconnectEsp32,450);
+setTimeout(autoReconnectEsp32,450);
 
 </script>
 </body>
