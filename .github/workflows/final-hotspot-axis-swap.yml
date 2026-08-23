@@ -1,0 +1,46 @@
+name: Final R616 hotspot axis swap
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/final-hotspot-axis-swap.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Swap plan axes into STL coordinates
+        shell: python
+        run: |
+          from pathlib import Path
+          p=Path('room-hotspot.js')
+          s=p.read_text(encoding='utf-8')
+          old="""  function worldXZ(x,z){
+    /* Both STL horizontal axes are reversed relative to the supplied plan/top view. */
+    return {x:bbox.max.x-size.x*x,z:bbox.min.z+size.z*z};
+  }"""
+          new="""  function worldXZ(x,z){
+    /* Plan X (left→right) maps to -STL Z; plan Z (top→street) maps to +STL X. */
+    return {x:bbox.min.x+size.x*z,z:bbox.max.z-size.z*x};
+  }"""
+          if old not in s: raise SystemExit('worldXZ block not found')
+          s=s.replace(old,new,1)
+          old2="const geo=new THREE.BoxGeometry(size.x*room.w,yy.sy,size.z*room.d);"
+          new2="const geo=new THREE.BoxGeometry(size.x*room.d,yy.sy,size.z*room.w);"
+          if old2 not in s: raise SystemExit('room geometry line not found')
+          s=s.replace(old2,new2,1)
+          s=s.replace('corrected plan mapping','corrected swapped-axis plan mapping',1)
+          p.write_text(s,encoding='utf-8')
+      - name: Commit patch and remove workflow
+        run: |
+          rm .github/workflows/final-hotspot-axis-swap.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add room-hotspot.js .github/workflows/final-hotspot-axis-swap.yml
+          git commit -m "Swap hotspot X/Z axes to match historic plan"
+          git push
