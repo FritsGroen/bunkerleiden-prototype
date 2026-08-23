@@ -1,0 +1,25 @@
+name: Fix Morse museum bridge to secure WSS
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/fix_morse_secure_museum_wss.py'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch Morse page
+        run: python scripts/fix_morse_secure_museum_wss.py
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add morse.html morse_BACKUP_2026-08-23_1254.html
+          git diff --cached --quiet || git commit -m "Use secure WSS for museum Morse bridge"
+          git push
