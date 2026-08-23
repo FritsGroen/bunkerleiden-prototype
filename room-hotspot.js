@@ -1,8 +1,77 @@
-/* R616 3D interactive rooms + POI configuration — contour volumes + dossier routing — 2026-08-23 */
+/* R616 3D interactive rooms + POI configuration — contours + dossiers + sonar + modal history — 2026-08-23 */
 (function(){
   'use strict';
 
   const GOLD=0xe4b719, GOLD2=0xffd84b;
+
+  /* POI discovery sound: one sonar ping when the pointer enters a glowing POI. */
+  const poiSonar=new Audio('echo_sonar.mp3');
+  poiSonar.preload='auto';
+  poiSonar.volume=.46;
+  let lastSonarAt=0;
+
+  function playPoiSonar(){
+    const now=performance.now();
+    if(now-lastSonarAt<220)return;
+    lastSonarAt=now;
+    try{
+      poiSonar.pause();
+      poiSonar.currentTime=0;
+      const p=poiSonar.play();
+      if(p&&typeof p.catch==='function')p.catch(()=>{});
+    }catch(_){ }
+  }
+
+  /*
+    Every modal gets one temporary browser-history entry. Browser Back (including a
+    mouse side button) therefore closes the dossier first instead of leaving index.html.
+    The screen that was underneath the modal is restored: Techniek stays Techniek,
+    while a dossier opened from the 3D viewer returns to the 3D viewer.
+  */
+  let modalHistoryInstalled=false;
+  let modalReturnScreen='techniek';
+
+  function activeScreenId(){
+    const active=document.querySelector('.screen.active');
+    return active&&active.id?active.id:'techniek';
+  }
+
+  function installModalHistory(){
+    if(modalHistoryInstalled||typeof window.modal!=='function'||typeof window.closeM!=='function')return;
+    const baseModal=window.modal;
+    const baseCloseM=window.closeM;
+
+    window.modal=function(h,wide=false){
+      const overlay=document.getElementById('ov');
+      const wasOpen=!!(overlay&&overlay.classList.contains('open'));
+      if(!wasOpen){
+        modalReturnScreen=activeScreenId();
+        const nextState=Object.assign({},history.state||{},{r616Modal:true,r616ReturnScreen:modalReturnScreen});
+        history.pushState(nextState,'',location.href);
+      }
+      return baseModal(h,wide);
+    };
+
+    window.closeM=function(){
+      const overlay=document.getElementById('ov');
+      if(overlay&&overlay.classList.contains('open')&&history.state&&history.state.r616Modal){
+        history.back();
+        return;
+      }
+      return baseCloseM();
+    };
+
+    window.addEventListener('popstate',()=>{
+      const overlay=document.getElementById('ov');
+      if(overlay&&overlay.classList.contains('open')){
+        baseCloseM();
+        const target=modalReturnScreen||'techniek';
+        if(typeof window.go==='function'&&document.getElementById(target))window.go(target);
+      }
+    });
+
+    modalHistoryInstalled=true;
+  }
 
   const ROOMS=[
     {id:'01',name:'SCHAKELRUIMTE',h:.47,poly:[
@@ -201,7 +270,9 @@
 
   function setHover(key,on,source){
     const it=items.get(key);if(!it)return;
+    const sonarEnter=it.type==='poi'&&source==='scene'&&on&&!it.hover;
     if(source==='label')it.labelHover=on;else if(source==='card')it.cardHover=on;else it.hover=on;
+    if(sonarEnter)playPoiSonar();
     refreshAll();
   }
 
@@ -288,7 +359,7 @@
     console.info('R616 hotspots:',ROOMS.length,'ruimtes +',POIS.length,'POIs · dossier routing actief');return true;
   }
 
-  function init(){addStyles();wireCards();build()}
+  function init(){installModalHistory();addStyles();wireCards();build()}
   let tries=0;const timer=setInterval(()=>{init();if(items.size||++tries>100)clearInterval(timer)},180);
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
   new MutationObserver(()=>wireCards()).observe(document.body,{childList:true,subtree:true});
