@@ -3,7 +3,7 @@ name: Patch sonar and modal history
 on:
   push:
     paths:
-      - '.github/workflows/patch-sonar-modal-history.yml'
+      - '.sonar-modal-history-trigger'
 
 permissions:
   contents: write
@@ -136,11 +136,12 @@ jobs:
       - name: JavaScript syntax check
         run: node --check room-hotspot.js
 
-      - name: Commit patch and remove one-time workflow
+      - name: Commit patch and remove one-time files
         run: |
           rm .github/workflows/patch-sonar-modal-history.yml
+          rm -f .sonar-modal-history-trigger
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add room-hotspot.js .github/workflows/patch-sonar-modal-history.yml
+          git add room-hotspot.js .github/workflows/patch-sonar-modal-history.yml .sonar-modal-history-trigger
           git commit -m "Add POI sonar and modal back navigation"
           git push origin main
