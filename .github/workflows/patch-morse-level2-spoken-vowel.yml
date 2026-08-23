@@ -1,0 +1,29 @@
+name: Patch Morse Level 2 spoken vowel
+
+on:
+  push:
+    paths:
+      - '.github/workflows/patch-morse-level2-spoken-vowel.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Backup current Morse page
+        run: cp morse.html morse_BACKUP_2026-08-23_1038.html
+      - name: Patch Morse page
+        run: python scripts/patch_morse_level2_spoken_vowel.py
+      - name: Commit changes
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add morse.html morse_BACKUP_2026-08-23_1038.html
+          git diff --cached --quiet || git commit -m 'Restore spoken vowel flow and correct Baumuster'
+          git push
