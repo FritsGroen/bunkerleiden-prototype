@@ -65,7 +65,7 @@
       <div class="scores">
         <div class="scorebox"><h3 id="scoreTitle">HIGH SCORES · LEVEL 1</h3><div id="scoreRows" class="small">Nog geen scores.</div></div>
       </div>
-      <div class="sessionbar"><span class="small">TOPSCORES BLIJVEN OP DIT APPARAAT BEWAARD.</span><button class="ctl danger" onclick="newVisitor()">NIEUWE BEZOEKER · RESET</button></div>
+      <div class="sessionbar"><span class="small">TOPSCORES BLIJVEN OP DIT APPARAAT BEWAARD.</span><button class="ctl danger" onclick="newVisitor()">NIEUWE BEZOEKER</button></div>
     </main>
 
     <aside class="panel keypanel">
@@ -91,7 +91,6 @@ const L3WORDS=['BUNKER','WACHT','KLERK','VELD','ALARM','KUST','STAF','KAMP','POS
 const VOWELS={A:'.-',E:'.',I:'..',O:'---',U:'..-'};
 const isVowel=c=>'AEIOU'.includes(c);
 let scores=loadScores();
-purgeUnsafeL1Scores();
 let unlocks=loadUnlocks();
 let selectedLevel=1;
 let inputMode=null,expectedLetter='',marks='',letterTimer=null,keyDownAt=0,keyPointer=null;
@@ -106,27 +105,6 @@ function saveUnlocks(){sessionStorage.setItem(SESSION,JSON.stringify(unlocks));r
 function fmt(ms){return ((ms||0)/1000).toFixed(1)+' s'}
 function elapsed(start,active){return start?(performance.now()-start):0}
 function cleanWord(v,max=12){return (v||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,max)}
-// Museum-safe Level 1 input filter. Short ambiguous terms are exact-match only;
-// longer profanity/slurs are also caught inside variants. Leetspeak is normalized.
-const L1_BLOCK_EXACT=['KUT','LUL','SLET','HOER','GVD','SEX','DICK','COCK','CUNT','SLUT','WHORE','HURE','FOTZE'];
-const L1_BLOCK_PARTS=['FUCK','SHIT','BITCH','KLOOTZAK','KLOTE','GODVER','TERING','TYFUS','KANKER','NEUK','PORNO','PIEMEL','PENIS','VAGINA','SCHEIS','ARSCHLOCH','FICK','WICHSER','BASTARD','ASSHOLE','NIGGER','NEGER'];
-function normalizeForFilter(v){
-  const map={0:'O',1:'I',3:'E',4:'A',5:'S',7:'T',8:'B'};
-  return cleanWord(v,12).split('').map(c=>map[c]||c).join('');
-}
-function isCleanL1Word(v){
-  const n=normalizeForFilter(v);
-  if(!n)return true;
-  const collapsed=n.replace(/(.)\1{1,}/g,'$1');
-  return !L1_BLOCK_EXACT.includes(n) && !L1_BLOCK_EXACT.includes(collapsed) &&
-         !L1_BLOCK_PARTS.some(x=>n.includes(x)||collapsed.includes(x));
-}
-function purgeUnsafeL1Scores(){
-  let changed=false;
-  for(const w of Object.keys(scores.l1||{})){if(!isCleanL1Word(w)){delete scores.l1[w];changed=true}}
-  for(const w of Object.keys(scores.l1Attempts||{})){if(!isCleanL1Word(w)){delete scores.l1Attempts[w];changed=true}}
-  if(changed)saveScores();
-}
 function suggestedThreshold(w){return Math.max(45,Math.max((w||'').length,5)*12)}
 function shuffle(a){a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
 function setMsg(id,text,type=''){const el=$(id);el.textContent=text;el.className='message'+(type?' '+type:'')}
@@ -147,34 +125,12 @@ function showLevel(n){if(n===2&&!unlocks.l2){setMsg('l1msg','Haal eerst Level 1 
 function stopInput(){inputMode=null;expectedLetter='';marks='';clearTimeout(letterTimer);$('markread').textContent='—'}
 function register(arr,item){arr.push(item);arr.sort((a,b)=>a.time_ms-b.time_ms||a.mistakes-b.mistakes);arr.splice(3)}
 function scoreItem(ms,mistakes){return{time_ms:Math.round(ms),mistakes,date:new Date().toLocaleDateString('nl-NL')}}
-function startL1(){
-  initAudio();stopInput();
-  const typed=cleanWord($('l1word').value,12);
-  if(typed&&!isCleanL1Word(typed)){
-    $('l1word').value='';
-    setMsg('l1msg','Dat woord gebruiken we niet in de museumopdracht. Kies een ander, net woord.','bad');
-    return;
-  }
-  const word=typed||WORDS[Math.floor(Math.random()*WORDS.length)];
-  $('l1word').value=word;
-  l1={active:true,word,index:0,attempts:0,mistakes:0,start:performance.now(),threshold:Math.max(5,parseFloat($('l1threshold').value)||suggestedThreshold(word))};
-  renderL1();setMsg('l1msg','Luister naar letter 1 en sein hem daarna terug.');setTimeout(()=>beginL1Letter(),300)
-}
+function startL1(){initAudio();stopInput();const word=cleanWord($('l1word').value,12)||WORDS[Math.floor(Math.random()*WORDS.length)];$('l1word').value=word;l1={active:true,word,index:0,attempts:0,mistakes:0,start:performance.now(),threshold:Math.max(5,parseFloat($('l1threshold').value)||suggestedThreshold(word))};renderL1();setMsg('l1msg','Luister naar letter 1 en sein hem daarna terug.');setTimeout(()=>beginL1Letter(),300)}
 function randomL1(){const w=WORDS[Math.floor(Math.random()*WORDS.length)];$('l1word').value=w;$('l1threshold').value=suggestedThreshold(w);startL1()}
 function beginL1Letter(){if(!l1.active)return;expectedLetter=l1.word[l1.index];inputMode='l1';$('decodedread').textContent='Doel: letter '+(l1.index+1)+' van '+l1.word.length;playLetter(expectedLetter)}
 function handleL1(ok,decoded){if(!l1.active)return;l1.attempts++;if(ok){l1.index++;if(l1.index>=l1.word.length){l1.active=false;const ms=performance.now()-l1.start;stopInput();scores.l1[l1.word]??=[];scores.l1Attempts[l1.word]=(scores.l1Attempts[l1.word]||0)+1;register(scores.l1[l1.word],scoreItem(ms,l1.mistakes));saveScores();const passed=l1.word.length>=5&&ms<=l1.threshold*1000;if(passed){unlocks.l2=true;saveUnlocks();setMsg('l1msg','Klaar: '+l1.word+' in '+fmt(ms)+'. Level 2 is ontgrendeld!','good')}else setMsg('l1msg','Klaar in '+fmt(ms)+'. Voor Level 2: minimaal 5 letters binnen '+l1.threshold.toFixed(0)+' s.','bad');renderL1();renderScores();return}setMsg('l1msg','Goed. Nu letter '+(l1.index+1)+' van '+l1.word.length+'.','good');setTimeout(beginL1Letter,500)}else{l1.mistakes++;setMsg('l1msg','Fout ('+decoded+'). Luister opnieuw en probeer dezelfde letter.','bad');setTimeout(beginL1Letter,650)}renderL1()}
 function renderL1(){const box=$('l1progress');box.innerHTML='';for(let i=0;i<Math.max(l1.word.length,5);i++){const s=document.createElement('div');s.className='slot '+(i<l1.index?'done':i===l1.index&&l1.active?'current':'todo');s.textContent=i<l1.word.length?(i<l1.index?l1.word[i]:i===l1.index&&l1.active?'?':'·'):'';box.appendChild(s)}$('l1attempts').textContent=l1.attempts;$('l1mistakes').textContent=l1.mistakes}
-$('l1word').addEventListener('input',()=>{
-  const v=cleanWord($('l1word').value,12);
-  if(v&&!isCleanL1Word(v)){
-    $('l1word').value='';
-    $('l1threshold').value=suggestedThreshold('FRITS');
-    setMsg('l1msg','Dat woord is niet toegestaan. Kies een ander, net woord.','bad');
-    renderScores();
-    return;
-  }
-  $('l1word').value=v;$('l1threshold').value=suggestedThreshold(v)
-});
+$('l1word').addEventListener('input',()=>{const v=cleanWord($('l1word').value,12);$('l1word').value=v;$('l1threshold').value=suggestedThreshold(v)});
 function startL2(){if(!unlocks.l2){setMsg('l2msg','Level 2 is nog vergrendeld.','bad');return}initAudio();stopInput();l2={active:true,sequence:shuffle(['A','E','I','O','U']),index:0,phase:'listen',attempts:0,mistakes:0,start:performance.now()};renderL2();nextL2()}
 function nextL2(){if(!l2.active)return;l2.phase='listen';expectedLetter=l2.sequence[l2.index];inputMode=null;$('l2speaker').textContent='LUISTER NAAR DE KLINKER';$('l2sub').textContent='Kies daarna de juiste morsecode.';setMsg('l2msg','Welke morsecode hoort bij de uitgesproken klinker?');speakCurrentVowel();renderL2()}
 function speakCurrentVowel(){if(!l2.active||!l2.sequence.length)return;const letter=l2.sequence[l2.index];if('speechSynthesis'in window){speechSynthesis.cancel();const u=new SpeechSynthesisUtterance('Klinker '+letter);u.lang='nl-NL';u.rate=.75;speechSynthesis.speak(u)}}
@@ -194,19 +150,7 @@ function renderL3Meta(){$('l3attempts').textContent=l3.attempts;$('l3mistakes').
 function renderBest(){const l1all=Object.entries(scores.l1||{}).flatMap(([w,a])=>a.map(x=>({...x,w}))).sort((a,b)=>a.time_ms-b.time_ms);$('best1').innerHTML=l1all.length?'BESTE: <b>'+l1all[0].w+' · '+fmt(l1all[0].time_ms)+'</b>':'Nog geen score.';$('best2').innerHTML=scores.l2?.length?'BESTE: <b>'+fmt(scores.l2[0].time_ms)+'</b>':'Nog geen score.';const l3all=Object.entries(scores.l3||{}).flatMap(([w,a])=>a.map(x=>({...x,w}))).sort((a,b)=>a.time_ms-b.time_ms);$('best3').innerHTML=l3all.length?'BESTE: <b>'+l3all[0].w+' · '+fmt(l3all[0].time_ms)+'</b>':'Nog geen score.'}
 function lines(items,labelFn){if(!items.length)return'<span class="small">Nog geen scores.</span>';return items.map((s,i)=>'<div class="scoreline"><span>'+(i+1)+'</span><b>'+labelFn(s)+'</b><span>'+fmt(s.time_ms)+'</span><span>'+s.mistakes+'f</span></div>').join('')}
 function renderScores(){let items=[];$('scoreTitle').textContent='HIGH SCORES · LEVEL '+selectedLevel;if(selectedLevel===1){const w=cleanWord($('l1word').value,12)||l1.word;items=(scores.l1[w]||[]).map(s=>({...s,w}));$('scoreRows').innerHTML=lines(items,s=>s.w)+'<div class="small" style="margin-top:7px">Geprobeerd: '+(scores.l1Attempts[w]||0)+'× · woord '+w+'</div>'}else if(selectedLevel===2){items=(scores.l2||[]).map(s=>({...s,w:'KLINKERS'}));$('scoreRows').innerHTML=lines(items,s=>s.w)+'<div class="small" style="margin-top:7px">Geprobeerd: '+(scores.l2Attempts||0)+'×</div>'}else{items=Object.entries(scores.l3||{}).flatMap(([w,a])=>a.map(s=>({...s,w}))).sort((a,b)=>a.time_ms-b.time_ms).slice(0,5);$('scoreRows').innerHTML=lines(items,s=>s.w)}}
-function newVisitor(){
-  unlocks={l1:true,l2:false,l3:false};
-  sessionStorage.setItem(SESSION,JSON.stringify(unlocks));
-  stopInput();
-  l1={active:false,word:'FRITS',index:0,attempts:0,mistakes:0,start:0,threshold:60};
-  l2={active:false,sequence:[],index:0,phase:'idle',attempts:0,mistakes:0,start:0};
-  l3={active:false,word:'',order:[],step:0,solved:new Set(),phase:'idle',attempts:0,mistakes:0,start:0};
-  $('l1word').value='FRITS';$('l1threshold').value=suggestedThreshold('FRITS');
-  $('l1time').textContent='0.0 s';$('l2time').textContent='0.0 s';$('l3time').textContent='0.0 s';
-  $('l2speaker').textContent='NOG NIET GESTART';$('l2sub').textContent='Start de klinkerronde.';
-  selectedLevel=1;showLevel(1);renderL1();renderL2();renderL3Word();renderL3Meta();renderScores();
-  setMsg('l1msg','Nieuwe bezoeker gestart op Level 1. Topscores zijn behouden.','good')
-}
+function newVisitor(){unlocks={l1:true,l2:false,l3:false};sessionStorage.setItem(SESSION,JSON.stringify(unlocks));l1.active=l2.active=l3.active=false;stopInput();selectedLevel=1;showLevel(1);setMsg('l1msg','Nieuwe bezoeker gestart. Topscores zijn behouden.','good')}
 setInterval(()=>{if(l1.active)$('l1time').textContent=fmt(elapsed(l1.start,true));if(l2.active)$('l2time').textContent=fmt(elapsed(l2.start,true));if(l3.active)$('l3time').textContent=fmt(elapsed(l3.start,true))},100);
 $('l1word').addEventListener('change',renderScores);renderL1();renderL2();renderL3Word();renderL3Meta();renderCards();renderScores();
 </script>
