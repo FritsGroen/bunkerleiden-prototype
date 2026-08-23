@@ -24,7 +24,7 @@
 
   <div class="lead">
     <div><div class="k">FERNSPRECHDIENST · LEREN DOOR DOEN</div><h2 style="margin:5px 0 0">HAAL ALLE DRIE NIVEAUS</h2></div>
-    <p>Test je morsvaardigheid in drie stappen: luisteren, herkennen en zelf seinen. Voltooi elk niveau binnen de doeltijd om het volgende vrij te spelen.</p>
+    <p>De bestaande Morse-trainer, nu speelbaar met de Baumuster T1 op het scherm. Houd de muisknop kort ingedrukt voor een punt en langer voor een streep. De toon is 800 Hz; de punt/streepgrens is 250 ms.</p>
   </div>
 
   <div class="levels">
@@ -38,7 +38,7 @@
       <section id="level1">
         <div class="gamehead"><div><div class="k">LEVEL 1</div><h2>HOREN EN NASPELEN</h2></div><span class="badge ok">OPEN</span></div>
         <p class="copy">Kies een woord. Je hoort steeds één letter in morse. Sein diezelfde letter terug met de taster.</p>
-        <div class="row"><input id="l1word" class="word" minlength="3" maxlength="12" value="FRITS" aria-label="Woord"><button class="ghost" onclick="randomL1()">RANDOM</button><label class="small">DOELTIJD</label><input id="l1threshold" class="number" type="number" value="35" readonly aria-label="Automatische doeltijd"><span class="small">SEC</span></div>
+        <div class="row"><input id="l1word" class="word" maxlength="12" value="FRITS" aria-label="Woord"><button class="ghost" onclick="randomL1()">RANDOM</button><label class="small">DOELTIJD</label><input id="l1threshold" class="number" type="number" min="5" max="600" value="60"><span class="small">SEC</span></div>
         <div class="row"><button class="primary" onclick="startL1()">START LEVEL 1</button><button class="ghost" onclick="replayExpected()">HERHAAL LETTER</button></div>
         <div id="l1progress" class="progress"></div><div id="l1msg" class="message">Kies een woord en start de proef.</div>
         <div class="meta"><div class="pill">TIJD<strong id="l1time">0.0 s</strong></div><div class="pill">POGINGEN<strong id="l1attempts">0</strong></div><div class="pill">FOUTEN<strong id="l1mistakes">0</strong></div></div>
@@ -75,7 +75,7 @@
       </div>
       <div class="keyhud"><b><span id="keylamp" class="keylamp"></span>HOUD INGEDRUKT OM TE SEINEN</b>Kort &lt; 250 ms = punt · langer = streep · 700 ms pauze sluit de letter af.</div>
       <div class="inputread">INGEVOERD: <b id="markread">—</b><br><span id="decodedread" class="small">Wacht op een opdracht.</span></div>
-      <div class="instructions">Sein met de muis op de Baumuster T1. Kort indrukken geeft een punt, langer indrukken een streep. Na 700 ms stilte wordt de letter beoordeeld.</div>
+      <div class="instructions">De toets geeft tijdens het indrukken direct een 800 Hz-zijtoon. De afbeelding wisselt tussen de statische en geanimeerde Baumuster T1 uit deze website.</div>
     </aside>
   </div>
 </div>
@@ -95,7 +95,7 @@ let unlocks=loadUnlocks();
 let selectedLevel=1;
 let inputMode=null,expectedLetter='',marks='',letterTimer=null,keyDownAt=0,keyPointer=null;
 let audioCtx=null,keyOsc=null,keyGain=null;
-let l1={active:false,word:'FRITS',index:0,attempts:0,mistakes:0,start:0,threshold:35};
+let l1={active:false,word:'FRITS',index:0,attempts:0,mistakes:0,start:0,threshold:60};
 let l2={active:false,sequence:[],index:0,phase:'idle',attempts:0,mistakes:0,start:0};
 let l3={active:false,word:'',order:[],step:0,solved:new Set(),phase:'idle',attempts:0,mistakes:0,start:0};
 function loadScores(){try{return JSON.parse(localStorage.getItem(STORE))||{l1:{},l1Attempts:{},l2:[],l2Attempts:0,l3:{},l3Attempts:{}}}catch{return{l1:{},l1Attempts:{},l2:[],l2Attempts:0,l3:{},l3Attempts:{}}}}
@@ -137,7 +137,7 @@ function purgeUnsafeL1Scores(){
 }
 // Run only after the filter constants/functions above have been initialized.
 purgeUnsafeL1Scores();
-function suggestedThreshold(w){const n=Math.max(3,(w||'').length);if(n<=3)return 25;if(n===4)return 30;if(n===5)return 35;if(n===6)return 40;return 40+(n-6)*5}
+function suggestedThreshold(w){return Math.max(45,Math.max((w||'').length,5)*12)}
 function shuffle(a){a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
 function setMsg(id,text,type=''){const el=$(id);el.textContent=text;el.className='message'+(type?' '+type:'')}
 function initAudio(){if(!audioCtx)audioCtx=new (window.AudioContext||window.webkitAudioContext)();if(audioCtx.state==='suspended')audioCtx.resume()}
@@ -160,26 +160,19 @@ function scoreItem(ms,mistakes){return{time_ms:Math.round(ms),mistakes,date:new 
 function startL1(){
   initAudio();stopInput();
   const typed=cleanWord($('l1word').value,12);
-  if(typed.length<3){
-    setMsg('l1msg','Vul minimaal 3 letters in om Level 1 te starten.','bad');
-    return;
-  }
-  if(!isCleanL1Word(typed)){
+  if(typed&&!isCleanL1Word(typed)){
     $('l1word').value='';
-    $('l1threshold').value=suggestedThreshold('FRITS');
     setMsg('l1msg','Dat woord gebruiken we niet in de museumopdracht. Kies een ander, net woord.','bad');
     return;
   }
-  const word=typed;
-  const target=suggestedThreshold(word);
+  const word=typed||WORDS[Math.floor(Math.random()*WORDS.length)];
   $('l1word').value=word;
-  $('l1threshold').value=target;
-  l1={active:true,word,index:0,attempts:0,mistakes:0,start:performance.now(),threshold:target};
+  l1={active:true,word,index:0,attempts:0,mistakes:0,start:performance.now(),threshold:Math.max(5,parseFloat($('l1threshold').value)||suggestedThreshold(word))};
   renderL1();setMsg('l1msg','Luister naar letter 1 en sein hem daarna terug.');setTimeout(()=>beginL1Letter(),300)
 }
 function randomL1(){const w=WORDS[Math.floor(Math.random()*WORDS.length)];$('l1word').value=w;$('l1threshold').value=suggestedThreshold(w);startL1()}
 function beginL1Letter(){if(!l1.active)return;expectedLetter=l1.word[l1.index];inputMode='l1';$('decodedread').textContent='Doel: letter '+(l1.index+1)+' van '+l1.word.length;playLetter(expectedLetter)}
-function handleL1(ok,decoded){if(!l1.active)return;l1.attempts++;if(ok){l1.index++;if(l1.index>=l1.word.length){l1.active=false;const ms=performance.now()-l1.start;stopInput();scores.l1[l1.word]??=[];scores.l1Attempts[l1.word]=(scores.l1Attempts[l1.word]||0)+1;register(scores.l1[l1.word],scoreItem(ms,l1.mistakes));saveScores();const passed=l1.word.length>=3&&ms<=l1.threshold*1000;if(passed){unlocks.l2=true;saveUnlocks();setMsg('l1msg','Klaar: '+l1.word+' in '+fmt(ms)+'. Level 2 is ontgrendeld!','good')}else setMsg('l1msg','Klaar in '+fmt(ms)+'. Voor Level 2: minimaal 3 letters binnen '+l1.threshold.toFixed(0)+' s.','bad');renderL1();renderScores();return}setMsg('l1msg','Goed. Nu letter '+(l1.index+1)+' van '+l1.word.length+'.','good');setTimeout(beginL1Letter,500)}else{l1.mistakes++;setMsg('l1msg','Fout ('+decoded+'). Luister opnieuw en probeer dezelfde letter.','bad');setTimeout(beginL1Letter,650)}renderL1()}
+function handleL1(ok,decoded){if(!l1.active)return;l1.attempts++;if(ok){l1.index++;if(l1.index>=l1.word.length){l1.active=false;const ms=performance.now()-l1.start;stopInput();scores.l1[l1.word]??=[];scores.l1Attempts[l1.word]=(scores.l1Attempts[l1.word]||0)+1;register(scores.l1[l1.word],scoreItem(ms,l1.mistakes));saveScores();const passed=l1.word.length>=5&&ms<=l1.threshold*1000;if(passed){unlocks.l2=true;saveUnlocks();setMsg('l1msg','Klaar: '+l1.word+' in '+fmt(ms)+'. Level 2 is ontgrendeld!','good')}else setMsg('l1msg','Klaar in '+fmt(ms)+'. Voor Level 2: minimaal 5 letters binnen '+l1.threshold.toFixed(0)+' s.','bad');renderL1();renderScores();return}setMsg('l1msg','Goed. Nu letter '+(l1.index+1)+' van '+l1.word.length+'.','good');setTimeout(beginL1Letter,500)}else{l1.mistakes++;setMsg('l1msg','Fout ('+decoded+'). Luister opnieuw en probeer dezelfde letter.','bad');setTimeout(beginL1Letter,650)}renderL1()}
 function renderL1(){const box=$('l1progress');box.innerHTML='';for(let i=0;i<Math.max(l1.word.length,5);i++){const s=document.createElement('div');s.className='slot '+(i<l1.index?'done':i===l1.index&&l1.active?'current':'todo');s.textContent=i<l1.word.length?(i<l1.index?l1.word[i]:i===l1.index&&l1.active?'?':'·'):'';box.appendChild(s)}$('l1attempts').textContent=l1.attempts;$('l1mistakes').textContent=l1.mistakes}
 $('l1word').addEventListener('input',()=>{
   const v=cleanWord($('l1word').value,12);
@@ -215,7 +208,7 @@ function newVisitor(){
   unlocks={l1:true,l2:false,l3:false};
   sessionStorage.setItem(SESSION,JSON.stringify(unlocks));
   stopInput();
-  l1={active:false,word:'FRITS',index:0,attempts:0,mistakes:0,start:0,threshold:35};
+  l1={active:false,word:'FRITS',index:0,attempts:0,mistakes:0,start:0,threshold:60};
   l2={active:false,sequence:[],index:0,phase:'idle',attempts:0,mistakes:0,start:0};
   l3={active:false,word:'',order:[],step:0,solved:new Set(),phase:'idle',attempts:0,mistakes:0,start:0};
   $('l1word').value='FRITS';$('l1threshold').value=suggestedThreshold('FRITS');
