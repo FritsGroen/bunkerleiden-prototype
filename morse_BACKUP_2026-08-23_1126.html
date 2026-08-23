@@ -9,7 +9,7 @@
 :root{--bg:#070907;--panel:#0d110d;--panel2:#111511;--a:#e4b719;--a2:#ffd84b;--text:#eee7d4;--muted:#aaa28e;--green:#73c66a;--red:#d34a3f;--line:rgba(255,255,255,.10);--gold:rgba(228,183,25,.35)}
 *{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--text);font-family:Arial,sans-serif}button,input{font:inherit}button{cursor:pointer}.shell{width:min(96vw,1420px);margin:auto;padding:16px 18px 54px}.top{display:flex;align-items:center;gap:16px;padding:10px 0 18px;border-bottom:1px solid var(--line);margin-bottom:18px}.logo{width:105px;height:55px;object-fit:contain}.brand{flex:1}.k{color:var(--a);font:10px monospace;letter-spacing:.15em}.brand h1{margin:3px 0 0;font-size:clamp(24px,4vw,42px);letter-spacing:.07em}.back,.ctl{border:1px solid var(--gold);background:#0b0f0b;color:var(--a2);padding:10px 12px;border-radius:6px;font:800 10px monospace;text-decoration:none}.back:hover,.ctl:hover{border-color:var(--a);background:#e4b7190a}.lead{display:flex;justify-content:space-between;gap:20px;align-items:end;margin:0 0 16px}.lead p{max-width:700px;color:#aaa18d;font-size:13px;line-height:1.55;margin:0}.levels{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px}.level{background:linear-gradient(180deg,#111511,#0a0e0a);border:1px solid var(--line);border-radius:9px;padding:15px;min-height:165px;position:relative}.level.open{cursor:pointer}.level.open:hover{border-color:var(--gold)}.level.active{border-color:var(--a);box-shadow:inset 0 0 0 1px #e4b71922}.level.locked{opacity:.48}.badge{display:inline-block;border:1px solid var(--gold);padding:4px 7px;color:var(--a2);font:9px monospace;margin-bottom:8px}.badge.ok{color:var(--green);border-color:#73c66a66}.badge.lock{color:#8f8878}.level h3{margin:4px 0 8px;font-size:15px}.level p{color:#aaa18d;font-size:12px;line-height:1.5;margin:0 0 10px}.best{font:10px monospace;color:#c7bfae;border-top:1px solid #ffffff0c;padding-top:9px}.best b{color:var(--green)}
 .console{display:grid;grid-template-columns:minmax(0,1fr) 430px;gap:14px;align-items:start}.panel{background:linear-gradient(180deg,#111511,#0a0e0a);border:1px solid var(--line);border-radius:9px;padding:16px}.panel h2,.panel h3{margin:0 0 10px}.panel h2{color:var(--a2);font-size:19px}.copy{color:#b9af99;line-height:1.55;font-size:13px}.game{min-height:455px}.gamehead{display:flex;justify-content:space-between;align-items:start;gap:12px;margin-bottom:12px}.hidden{display:none!important}.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0}.primary{background:linear-gradient(90deg,#e4b719,#cda31a);color:#181407;border:1px solid #e4b719;padding:10px 13px;border-radius:5px;font-weight:900}.ghost{border:1px solid var(--gold);background:#0b0f0b;color:#d8cfb8;padding:10px 12px;border-radius:5px;font-weight:800}.danger{border-color:#d34a3f77;color:#f0aaa5}.word{background:#070907;border:1px solid var(--gold);color:var(--text);padding:10px 11px;border-radius:5px;text-transform:uppercase;font:800 16px monospace;min-width:180px}.number{width:86px;background:#070907;border:1px solid var(--line);color:var(--text);padding:9px;border-radius:5px}.small{font:10px/1.45 monospace;color:#9e9684}.message{padding:11px 12px;background:#070a07;border-left:3px solid var(--a);font:12px/1.5 monospace;color:#cec4ad;min-height:44px;margin:12px 0}.message.good{border-left-color:var(--green);color:#c9f0c5}.message.bad{border-left-color:var(--red);color:#f2c0bb}.progress{display:flex;gap:6px;flex-wrap:wrap;margin:13px 0}.slot{min-width:38px;height:42px;display:grid;place-items:center;border:1px solid var(--line);background:#080b08;border-radius:5px;font:900 18px monospace}.slot.done{border-color:#73c66a55;color:var(--green)}.slot.current{border-color:var(--a);color:var(--a2);box-shadow:0 0 16px #e4b71922}.slot.todo{color:#5e5a50}.meta{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}.pill{padding:9px 10px;border:1px solid var(--line);border-radius:5px;color:#958d7b;font:9px monospace}.pill strong{display:block;color:var(--a2);font-size:16px;margin-top:3px}.speaker{display:grid;place-items:center;min-height:105px;border:1px dashed var(--gold);border-radius:8px;background:#080b08;text-align:center;margin:12px 0}.speaker b{display:block;color:var(--a2);font-size:20px;margin-bottom:4px}.wheel{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin:12px 0}.codebtn,.choice{border:1px solid var(--gold);background:#0b0f0b;color:var(--a2);padding:15px 7px;border-radius:6px;font:900 16px monospace}.codebtn:hover,.choice:hover{background:#e4b71910;border-color:var(--a)}.choices{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0}.damaged{font:900 clamp(27px,5vw,48px) monospace;letter-spacing:.17em;color:var(--a2);text-align:center;padding:18px 8px;border:1px dashed var(--gold);border-radius:8px;background:#080b08;margin:12px 0}.scores{display:grid;gap:10px;margin-top:12px}.scorebox{border:1px solid var(--line);border-radius:7px;padding:11px;background:#080b08}.scorebox h3{font-size:12px;color:var(--a2);margin:0 0 8px}.scoreline{display:grid;grid-template-columns:28px 1fr auto auto;gap:8px;padding:6px 0;border-bottom:1px solid #ffffff0b;font:10px monospace}.scoreline:last-child{border-bottom:0}.scoreline b{color:var(--green)}
-.keypanel{position:sticky;top:10px}.keywrap{position:relative;border:1px solid var(--gold);border-radius:9px;overflow:hidden;background:radial-gradient(circle at 50% 45%,#1b2018,#070907 74%);touch-action:none;user-select:none;-webkit-user-select:none;cursor:pointer;min-height:300px;display:grid;place-items:center}.keywrap img{display:block;width:100%;height:330px;object-fit:contain;pointer-events:none;user-select:none}.keywrap.pressed{box-shadow:0 0 34px #e4b71935}.keywrap.pressed img{transform:translateY(2px)}.keyhud{margin-top:10px;background:#050705e8;border:1px solid var(--line);border-left:3px solid var(--a);border-radius:6px;padding:9px 11px;font:10px/1.45 monospace;color:#c8bea6;pointer-events:none}.keyhud b{display:block;color:var(--a2);font-size:11px}.keylamp{display:inline-block;width:8px;height:8px;border-radius:50%;background:#5a5548;margin-right:6px;box-shadow:0 0 8px transparent}.keylamp.on{background:var(--green);box-shadow:0 0 12px #73c66a}.inputread{margin-top:10px;border:1px solid var(--line);padding:10px;border-radius:6px;font:11px monospace;background:#080b08}.inputread b{color:var(--a2);font-size:18px}.instructions{margin-top:10px;padding:10px;border:1px solid var(--line);border-radius:6px;color:#9f9785;font:10px/1.5 monospace}.sessionbar{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-top:12px}.statusok{color:var(--green)}.serialbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 10px}.serialbtn{border:1px solid var(--gold);background:#0b0f0b;color:var(--a2);padding:9px 11px;border-radius:5px;font:800 10px monospace}.serialbtn:hover{border-color:var(--a);background:#e4b7190a}.serialbtn.connected{border-color:#73c66a88;color:var(--green)}.serialstatus{display:inline-flex;align-items:center;gap:6px;color:#9f9785;font:10px monospace}.serialdot{width:8px;height:8px;border-radius:50%;background:#5a5548;box-shadow:0 0 8px transparent}.serialstatus.on{color:var(--green)}.serialstatus.on .serialdot{background:var(--green);box-shadow:0 0 10px #73c66a}.serialstatus.bad{color:#f0aaa5}.serialstatus.bad .serialdot{background:var(--red)}
+.keypanel{position:sticky;top:10px}.keywrap{position:relative;border:1px solid var(--gold);border-radius:9px;overflow:hidden;background:radial-gradient(circle at 50% 45%,#1b2018,#070907 74%);touch-action:none;user-select:none;-webkit-user-select:none;cursor:pointer;min-height:300px;display:grid;place-items:center}.keywrap img{display:block;width:100%;height:330px;object-fit:contain;pointer-events:none;user-select:none}.keywrap.pressed{box-shadow:0 0 34px #e4b71935}.keywrap.pressed img{transform:translateY(2px)}.keyhud{margin-top:10px;background:#050705e8;border:1px solid var(--line);border-left:3px solid var(--a);border-radius:6px;padding:9px 11px;font:10px/1.45 monospace;color:#c8bea6;pointer-events:none}.keyhud b{display:block;color:var(--a2);font-size:11px}.keylamp{display:inline-block;width:8px;height:8px;border-radius:50%;background:#5a5548;margin-right:6px;box-shadow:0 0 8px transparent}.keylamp.on{background:var(--green);box-shadow:0 0 12px #73c66a}.inputread{margin-top:10px;border:1px solid var(--line);padding:10px;border-radius:6px;font:11px monospace;background:#080b08}.inputread b{color:var(--a2);font-size:18px}.instructions{margin-top:10px;padding:10px;border:1px solid var(--line);border-radius:6px;color:#9f9785;font:10px/1.5 monospace}.sessionbar{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-top:12px}.statusok{color:var(--green)}
 @media(max-width:950px){.console{grid-template-columns:1fr}.keypanel{position:static}.keywrap img{height:290px}.levels{grid-template-columns:1fr}.lead{display:block}.lead p{margin-top:8px}.game{min-height:0}}
 @media(max-width:620px){.shell{padding:10px 10px 45px}.top{gap:9px}.logo{width:76px}.brand h1{font-size:22px}.back{padding:9px 8px}.meta{grid-template-columns:repeat(3,1fr)}.wheel{grid-template-columns:repeat(5,1fr)}.codebtn{padding:13px 4px;font-size:14px}.choices{grid-template-columns:repeat(2,1fr)}.keywrap img{height:250px}.console{gap:10px}.panel{padding:12px}}
 </style>
@@ -69,8 +69,7 @@
     </main>
 
     <aside class="panel keypanel">
-      <div class="k">BAUMUSTER T1 · MORSETASTER</div><h2 style="margin-top:5px">SEIN MET MUIS OF ECHTE TASTER</h2>
-      <div class="serialbar"><button id="serialBtn" class="serialbtn" type="button" onclick="toggleEsp32()">ECHTE TASTER · VERBINDEN</button><span id="serialStatus" class="serialstatus"><span class="serialdot"></span><span id="serialStatusText">MUIS ACTIEF</span></span></div>
+      <div class="k">BAUMUSTER T1 · VIRTUELE TASTER</div><h2 style="margin-top:5px">SEIN MET DE MUIS</h2>
       <div id="keywrap" class="keywrap" role="button" tabindex="0" aria-label="Virtuele morsetaster: houd ingedrukt om te seinen">
         <img id="keyimg" src="morse%20baumeister%20t1.png" alt="Baumuster T1 morsetaster">
       </div>
@@ -227,103 +226,6 @@ function newVisitor(){
 }
 setInterval(()=>{if(l1.active)$('l1time').textContent=fmt(elapsed(l1.start,true));if(l2.active)$('l2time').textContent=fmt(elapsed(l2.start,true));if(l3.active)$('l3time').textContent=fmt(elapsed(l3.start,true))},100);
 $('l1word').addEventListener('change',renderScores);renderL1();renderL2();renderL3Word();renderL3Meta();renderCards();renderScores();
-
-// Museum mode: physical Morse key -> ESP32 -> USB Web Serial -> same game logic.
-// Proven ESP32 protocol: 115200 baud, TONE:ON / TONE:OFF. Other protocol lines
-// (MARK, INPUT, LETTER, RESULT, READY) may still arrive and are safely ignored here.
-let espPort=null,espReader=null,espReading=false,espBuffer='';
-function setSerialStatus(message,state=''){
-  const box=$('serialStatus'),txt=$('serialStatusText'),btn=$('serialBtn');
-  if(!box||!txt||!btn)return;
-  txt.textContent=message;box.className='serialstatus'+(state?' '+state:'');
-  btn.classList.toggle('connected',!!espPort);
-  btn.textContent=espPort?'ECHTE TASTER · VERBREKEN':'ECHTE TASTER · VERBINDEN';
-}
-async function espSend(command){
-  if(!espPort||!espPort.writable)return false;
-  let writer;
-  try{writer=espPort.writable.getWriter();await writer.write(new TextEncoder().encode(command+'\n'));return true}
-  catch(e){return false}
-  finally{try{writer&&writer.releaseLock()}catch{}}
-}
-function handleEspLine(raw){
-  const line=(raw||'').trim();if(!line)return;
-  const upper=line.toUpperCase();
-  if(upper==='TONE:ON'){
-    // Route the real key through the same timer, 800 Hz sidetone and animation.
-    keyPressStart({});
-  }else if(upper==='TONE:OFF'){
-    keyPressEnd({});
-  }else if(upper==='READY'){
-    setSerialStatus('ESP32 · TASTER GEREED','on');
-  }
-}
-async function readEsp32(){
-  if(!espPort||!espPort.readable)return;
-  espReading=true;const decoder=new TextDecoder();espBuffer='';
-  try{
-    espReader=espPort.readable.getReader();
-    while(espReading){
-      const {value,done}=await espReader.read();if(done)break;
-      espBuffer+=decoder.decode(value,{stream:true});
-      const lines=espBuffer.split(/\r?\n/);espBuffer=lines.pop()||'';
-      lines.forEach(handleEspLine);
-    }
-  }catch(e){
-    if(espReading)setSerialStatus('VERBINDING VERBROKEN','bad');
-  }finally{
-    try{espReader&&espReader.releaseLock()}catch{}
-    espReader=null;
-  }
-}
-async function openEsp32(port,automatic=false){
-  try{
-    espPort=port;await espPort.open({baudRate:115200});
-    setSerialStatus('ESP32 · ECHTE TASTER ACTIEF','on');
-    // Prevent the older standalone trainer target from doing its own comparison.
-    await espSend('RESET');await espSend('CLEARTARGET');
-    readEsp32();
-    return true;
-  }catch(e){
-    espPort=null;
-    setSerialStatus(automatic?'ESP32 BESCHIKBAAR · KLIK VERBINDEN':'POORT NIET BESCHIKBAAR','bad');
-    return false;
-  }
-}
-async function disconnectEsp32(){
-  espReading=false;
-  try{if(espReader)await espReader.cancel()}catch{}
-  try{if(keyDownAt)keyPressEnd({})}catch{}
-  try{if(espPort)await espPort.close()}catch{}
-  espPort=null;espReader=null;setSerialStatus('MUIS ACTIEF');
-}
-async function toggleEsp32(){
-  if(espPort){await disconnectEsp32();return}
-  if(!('serial' in navigator)){
-    setSerialStatus('ECHTE TASTER VEREIST EDGE/CHROME','bad');return;
-  }
-  try{
-    const port=await navigator.serial.requestPort();
-    await openEsp32(port,false);
-  }catch(e){
-    if(e&&e.name==='NotFoundError')setSerialStatus('MUIS ACTIEF');
-    else setSerialStatus('ESP32 VERBINDEN MISLUKT','bad');
-  }
-}
-async function autoReconnectEsp32(){
-  if(!('serial' in navigator)){
-    setSerialStatus('MUIS ACTIEF · ECHTE TASTER VIA EDGE/CHROME');return;
-  }
-  try{
-    const ports=await navigator.serial.getPorts();
-    if(ports.length)await openEsp32(ports[0],true);
-  }catch{}
-}
-if('serial' in navigator){
-  navigator.serial.addEventListener('disconnect',()=>{espPort=null;espReading=false;setSerialStatus('ESP32 LOSGEKOPPELD · MUIS ACTIEF','bad')});
-}
-setTimeout(autoReconnectEsp32,450);
-
 </script>
 </body>
 </html>
